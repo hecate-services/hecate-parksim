@@ -21,3 +21,9 @@
 
 -heart
 -mode interactive
+
+## Seed-ping at boot: -eval reads HECATE_DIST_SEED from the runtime
+## environment and net_adm:pings it. One connection is enough — the
+## rest of the cluster joins transitively via Erlang dist gossip.
+## When the env var is unset/empty the eval is a no-op.
+-eval "case os:getenv(\"HECATE_DIST_SEED\") of false -> ok; \"\" -> ok; S -> net_adm:ping(list_to_atom(S)) end."
