@@ -1,0 +1,17 @@
+%% Identical to config/sys.config; lives here because relx prod profile
+%% asks for sys_config_src (uniform with the sibling parksim apps).
+%% Simulator-specific knobs (shape, time_scale, seed, dry_run) are read
+%% from OS env at boot by parksim_simulator_config, not from this file.
+[
+    {hecate_parksim_simulator, [
+        {http_port, 8473},
+        {shape,       "city"},
+        {time_scale,  1.0},
+        {seed,        0},
+        {include_evacuation, false},
+        {dry_run,     true}
+    ]},
+    {kernel, [
+        {logger_level, info}
+    ]}
+].
