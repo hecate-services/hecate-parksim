@@ -3,8 +3,10 @@
 %%% the Erlang aggregates' side.
 -module(parksim_simulator_capabilities).
 
-%% entry2exit
--export([enter_vehicle/0, trigger_exit/0, attempt_payment/0,
+%% entry2exit (session correlation saga — entry/payment/exit are now
+%% PM-driven from lane-equipment facts; the simulator drives the
+%% hardware, not these directly)
+-export([enter_vehicle/0,
          mark_payment_captured/0, mark_payment_failed/0,
          record_exit/0, settle/0, force_settle/0, abandon/0,
          reprice/0, mark_overstayed/0]).
@@ -35,8 +37,6 @@
 
 %% --- entry2exit ---
 enter_vehicle()         -> <<"hecate-parksim-entry2exit.enter_vehicle">>.
-trigger_exit()          -> <<"hecate-parksim-entry2exit.trigger_exit">>.
-attempt_payment()       -> <<"hecate-parksim-entry2exit.attempt_payment">>.
 mark_payment_captured() -> <<"hecate-parksim-entry2exit.mark_payment_captured">>.
 mark_payment_failed()   -> <<"hecate-parksim-entry2exit.mark_payment_failed">>.
 record_exit()           -> <<"hecate-parksim-entry2exit.record_exit">>.
