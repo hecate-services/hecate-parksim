@@ -12,6 +12,8 @@
 -module(hecate_parksim_service).
 -behaviour(hecate_om_service).
 
+-include_lib("reckon_db/include/reckon_db.hrl").
+
 -export([info/0, start/1, stop/1, health/0, capabilities/0, identity_spec/0]).
 -export([store_id/0, data_dir/0]).
 -export([tenant_id/0]).
@@ -24,7 +26,24 @@ info() ->
     }.
 
 start(_Opts) ->
-    hecate_parksim_sup:start_link().
+    %% hecate_om 0.2.0 doesn't yet auto-wire store_id/0 callbacks; do
+    %% it explicitly here. When hecate_om >= 0.3.0 lands with the
+    %% hecate_om_store helper, this block goes away.
+    {ok, SupPid} = hecate_parksim_sup:start_link(),
+    ok = ensure_store(),
+    {ok, SupPid}.
+
+ensure_store() ->
+    Config = #store_config{
+        store_id = store_id(),
+        data_dir = data_dir(),
+        mode     = single
+    },
+    case reckon_db_sup:start_store(Config) of
+        {ok, _Pid}                    -> ok;
+        {error, {already_started, _}} -> ok;
+        {error, Reason}               -> error({store_start_failed, Reason})
+    end.
 
 stop(_State) ->
     ok.

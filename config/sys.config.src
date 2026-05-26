@@ -9,6 +9,13 @@
         {seed,        0},
         {include_evacuation, false}
     ]},
+    %% evoq adapter wiring: dispatch + subscribe + snapshot all go via
+    %% reckon_evoq_adapter into the per-tenant reckon-db store.
+    {evoq, [
+        {event_store_adapter,    reckon_evoq_adapter},
+        {subscription_adapter,   reckon_evoq_adapter},
+        {snapshot_store_adapter, reckon_evoq_adapter}
+    ]},
     {kernel, [
         {logger_level, info}
     ]}
