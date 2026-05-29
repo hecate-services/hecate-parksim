@@ -108,8 +108,8 @@ execute_archive_on_empty_rejects_test() ->
     ?assertEqual({error, session_not_initiated},
                  parking_session_aggregate:execute(empty(), archive_payload())).
 
-execute_archive_unpaid_rejects_test() ->
-    ?assertEqual({error, session_not_paid},
+execute_archive_unsettled_rejects_test() ->
+    ?assertEqual({error, session_not_settled},
                  parking_session_aggregate:execute(initiated(), archive_payload())).
 
 execute_archive_already_archived_rejects_test() ->

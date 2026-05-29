@@ -24,6 +24,12 @@ archived()  ->
     parking_session_state:apply_event(paid(), #{
         event_type => <<"parking_session_archived">>,
         session_id => <<"sess-1">>, archived_at => <<"t">>}).
+%% A permit session is settled at entry (permit_ref on the birth slip).
+permit_covered() ->
+    parking_session_state:apply_event(empty(), #{
+        event_type => <<"parking_session_initiated">>,
+        session_id => <<"sess-1">>, lot_id => <<"l">>,
+        permit_ref => <<"permit-42">>, entered_at => <<"t">>}).
 
 happy_path_test() ->
     {ok, [Ev]} = maybe_archive_parking_session:handle(mk_cmd(#{}), paid()),
@@ -37,9 +43,15 @@ rejects_when_not_initiated_test() ->
     ?assertEqual({error, session_not_initiated},
                  maybe_archive_parking_session:handle(mk_cmd(#{}), empty())).
 
-rejects_when_not_paid_test() ->
-    ?assertEqual({error, session_not_paid},
+rejects_when_not_settled_test() ->
+    ?assertEqual({error, session_not_settled},
                  maybe_archive_parking_session:handle(mk_cmd(#{}), initiated())).
+
+permit_covered_archives_without_payment_test() ->
+    Cmd = mk_cmd(#{<<"reason">> => <<"permit">>}),
+    {ok, [Ev]} = maybe_archive_parking_session:handle(Cmd, permit_covered()),
+    ?assertEqual(<<"sess-1">>, parking_session_archived_v1:get_session_id(Ev)),
+    ?assertEqual(<<"permit">>, parking_session_archived_v1:get_reason(Ev)).
 
 rejects_when_already_archived_test() ->
     ?assertEqual({error, session_already_archived},

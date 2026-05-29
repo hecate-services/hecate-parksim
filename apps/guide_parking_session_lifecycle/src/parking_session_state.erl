@@ -12,11 +12,11 @@
 -export([new/1, apply_event/2, to_map/1]).
 
 -export([
-    session_id/1, lot_id/1, status_flags/1, plate/1, card_id/1,
+    session_id/1, lot_id/1, status_flags/1, plate/1, card_id/1, permit_ref/1,
     entered_at/1, bay_id/1, docked_at/1, undocked_at/1,
     paid_at/1, amount_cents/1, archived_at/1, archive_reason/1,
     has_status/2, is_initiated/1, is_docked/1, is_undocked/1,
-    is_paid/1, is_archived/1
+    is_paid/1, is_permit_covered/1, is_settled/1, is_archived/1
 ]).
 
 -type state() :: #parking_session_state{}.
@@ -36,6 +36,7 @@ apply_event(#parking_session_state{status_flags = F} = S,
         lot_id     = maps:get(lot_id,     Ev, S#parking_session_state.lot_id),
         plate      = maps:get(plate,      Ev, S#parking_session_state.plate),
         card_id    = maps:get(card_id,    Ev, S#parking_session_state.card_id),
+        permit_ref = maps:get(permit_ref, Ev, S#parking_session_state.permit_ref),
         entered_at = maps:get(entered_at, Ev, S#parking_session_state.entered_at)
     };
 apply_event(#parking_session_state{status_flags = F} = S,
@@ -76,6 +77,7 @@ to_map(#parking_session_state{} = S) ->
       status_flags   => S#parking_session_state.status_flags,
       plate          => S#parking_session_state.plate,
       card_id        => S#parking_session_state.card_id,
+      permit_ref     => S#parking_session_state.permit_ref,
       entered_at     => S#parking_session_state.entered_at,
       bay_id         => S#parking_session_state.bay_id,
       docked_at      => S#parking_session_state.docked_at,
@@ -93,6 +95,7 @@ lot_id(#parking_session_state{lot_id = V})                 -> V.
 status_flags(#parking_session_state{status_flags = V})     -> V.
 plate(#parking_session_state{plate = V})                   -> V.
 card_id(#parking_session_state{card_id = V})               -> V.
+permit_ref(#parking_session_state{permit_ref = V})         -> V.
 entered_at(#parking_session_state{entered_at = V})         -> V.
 bay_id(#parking_session_state{bay_id = V})                 -> V.
 docked_at(#parking_session_state{docked_at = V})           -> V.
@@ -110,3 +113,12 @@ is_docked(S)    -> has_status(S, ?SESSION_DOCKED).
 is_undocked(S)  -> has_status(S, ?SESSION_UNDOCKED).
 is_paid(S)      -> has_status(S, ?SESSION_PAID).
 is_archived(S)  -> has_status(S, ?SESSION_ARCHIVED).
+
+%% Covered by a permit (settled for the whole visit at entry).
+is_permit_covered(#parking_session_state{permit_ref = undefined}) -> false;
+is_permit_covered(#parking_session_state{permit_ref = <<>>})      -> false;
+is_permit_covered(#parking_session_state{permit_ref = _})         -> true.
+
+%% A session is settled when it has been paid (ticket) OR is covered by
+%% a permit (permit holders are pre-paid for the permit's validity).
+is_settled(S) -> is_paid(S) orelse is_permit_covered(S).

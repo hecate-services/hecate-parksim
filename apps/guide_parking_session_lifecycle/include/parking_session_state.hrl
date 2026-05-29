@@ -9,7 +9,8 @@
     lot_id       :: binary() | undefined,    %% free-form tag, not enforced
     status_flags = 0 :: non_neg_integer(),
     plate        :: binary() | undefined,
-    card_id      :: binary() | undefined,
+    card_id      :: binary() | undefined,    %% ticket visits — minted card
+    permit_ref   :: binary() | undefined,    %% permit visits — covers the whole visit
     entered_at   :: binary() | undefined,
     bay_id       :: binary() | undefined,
     docked_at    :: binary() | undefined,

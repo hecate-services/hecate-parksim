@@ -28,7 +28,8 @@ run(#{lot := Lot, plate := Plate, credential := Credential}) ->
     LotId     = Lot#parksim_lot.id,
     SessionId = reckon_gater_stream_id:new(<<"sess">>),
     CardId    = card_id(Credential),
-    enter(SessionId, LotId, Plate, CardId),
+    PermitRef = permit_ref(Credential),
+    enter(SessionId, LotId, Plate, CardId, PermitRef),
     {BayId, Rng1} = pick_bay(Rng, Lot),
     dock(SessionId, BayId),
     {DwellSec, Rng2} = sample_dwell(Rng1, Lot),
@@ -41,12 +42,13 @@ run(#{lot := Lot, plate := Plate, credential := Credential}) ->
 %%--------------------------------------------------------------------
 %% Lifecycle dispatch
 
-enter(SessionId, LotId, Plate, CardId) ->
+enter(SessionId, LotId, Plate, CardId, PermitRef) ->
     _ = maybe_initiate_parking_session:dispatch(#{
         session_id => SessionId,
         lot_id     => LotId,
         plate      => Plate,
         card_id    => CardId,
+        permit_ref => PermitRef,
         entered_at => simulate_clock:now_iso8601()
     }),
     ok.
@@ -117,6 +119,9 @@ compute_fee_cents(DwellSec) ->
 
 card_id(ticket)      -> <<"card-", (hex(crypto:strong_rand_bytes(8)))/binary>>;
 card_id({permit, _}) -> undefined.
+
+permit_ref(ticket)        -> undefined;
+permit_ref({permit, Ref}) -> Ref.
 
 %% A session-level bay id within the lot — lot-X-bay-N, N in 1..capacity.
 %% No occupancy tracking (bays can collide); see DESIGN notes.

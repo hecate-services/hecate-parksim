@@ -34,6 +34,7 @@ emit(Cmd) ->
         lot_id     => initiate_parking_session_v1:get_lot_id(Cmd),
         plate      => initiate_parking_session_v1:get_plate(Cmd),
         card_id    => initiate_parking_session_v1:get_card_id(Cmd),
+        permit_ref => initiate_parking_session_v1:get_permit_ref(Cmd),
         entered_at => coalesce(initiate_parking_session_v1:get_entered_at(Cmd),
                                iso8601_now())
     }),

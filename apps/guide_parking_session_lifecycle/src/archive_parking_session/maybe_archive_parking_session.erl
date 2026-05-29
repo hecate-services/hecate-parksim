@@ -1,6 +1,7 @@
 %%% @doc Handler for `archive_parking_session_v1`.
 %%%
-%%% Requires session PAID, not yet ARCHIVED. Echoes `fee_cents` from
+%%% Requires session SETTLED (paid, or covered by a permit) and not yet
+%%% ARCHIVED. Echoes `fee_cents` from
 %%% the state's `amount_cents` (recorded at payment) — the event
 %%% payload is a subset of the dossier per DDD.md.
 -module(maybe_archive_parking_session).
@@ -30,8 +31,9 @@ check_state(Cmd, State) ->
             case parking_session_state:is_archived(State) of
                 true  -> {error, session_already_archived};
                 false ->
-                    case parking_session_state:is_paid(State) of
-                        false -> {error, session_not_paid};
+                    %% Settled = paid (ticket) OR covered by a permit.
+                    case parking_session_state:is_settled(State) of
+                        false -> {error, session_not_settled};
                         true  -> emit(Cmd, State)
                     end
             end
