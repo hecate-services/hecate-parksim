@@ -1,23 +1,32 @@
 %%% @doc SQLite read model for parking sessions — the durable,
 %%% queryable system of record (one row per session). The projection
-%%% upserts here as events arrive; QRY reads here. Because this is
-%%% durable, the event store can be scavenged freely without losing
-%%% "what happened".
+%%% feeds it as events arrive; QRY reads here. Because this is durable,
+%%% the event store can be scavenged freely without losing "what
+%%% happened".
 %%%
-%%% Lazy boot: starts cold, opens the DB on first use. The DB lives
-%%% under the tenant's data dir (persistent /bulk volume), so it
-%%% survives restarts — it is NEVER rebuilt from the (scavenged) event
-%%% store; the projection only moves forward.
+%%% Writes are async + batched: `apply_event/1` casts (never blocks the
+%%% projection), the store buffers, and flushes in one SQLite
+%%% transaction every ~FLUSH_MS or every MAX_BATCH events. A synchronous
+%%% call-per-event here previously serialised the whole projection
+%%% pipeline into a multi-hundred-MB mailbox/heap → constant GC → pegged
+%%% CPU. The DB lives under the tenant's data dir (persistent /bulk),
+%%% survives restarts, and is never rebuilt from the (scavenged) event
+%%% store — the projection only moves forward.
 -module(project_parking_sessions_store).
 -behaviour(gen_server).
 
 -include_lib("guide_parking_session_lifecycle/include/parking_session_status.hrl").
 
--export([start_link/0, apply_event/1, overview/0, get/1, recent/1]).
+-export([start_link/0, apply_event/1, flush_now/0, overview/0, get/1, recent/1]).
 -export([due_for_scavenge/2, mark_scavenged/1]).
--export([init/1, handle_call/3, handle_cast/2, terminate/2]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 
--record(state, {db :: term() | undefined}).
+-define(MAX_BATCH, 500).   %% flush immediately once the buffer reaches this
+-define(FLUSH_MS,  250).   %% otherwise flush on this cadence
+
+-record(state, {db :: term(),
+                buf = [] :: [map()],          %% pending events, newest-first
+                flush_pending = false :: boolean()}).
 
 -define(SELECT_COLS,
     "session_id, status, lot_id, bay_id, plate, card_id, permit_ref, "
@@ -27,9 +36,14 @@
 
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-%% @doc Upsert the read-model row for one event (called by the projection).
--spec apply_event(map()) -> ok | {error, term()}.
-apply_event(Event) -> gen_server:call(?MODULE, {apply_event, Event}).
+%% @doc Buffer one event for the read model (called by the projection).
+%% Async — never blocks the projection pipeline.
+-spec apply_event(map()) -> ok.
+apply_event(Event) -> gen_server:cast(?MODULE, {apply_event, Event}).
+
+%% @doc Force a synchronous flush of buffered writes (tests / ops).
+-spec flush_now() -> ok.
+flush_now() -> gen_server:call(?MODULE, flush).
 
 %% @doc Aggregate overview for the QRY side — counts, revenue, by-status, by-lot.
 -spec overview() -> {ok, map()} | {error, term()}.
@@ -52,22 +66,64 @@ mark_scavenged(SessionId) -> gen_server:call(?MODULE, {mark_scavenged, SessionId
 
 %%--------------------------------------------------------------------
 
-init([]) -> {ok, #state{db = undefined}}.
+%% The SQLite read model is independent of the reckon-db event store, so
+%% open it eagerly here (the PRJ sup boots before the event store exists).
+init([]) ->
+    {ok, Db} = open(),
+    {ok, #state{db = Db}}.
 
-handle_call(Req, _From, S0) ->
-    case ensure_open(S0) of
-        {ok, #state{db = Db} = S} -> {reply, do(Req, Db), S};
-        {error, _} = E            -> {reply, E, S0}
-    end.
+%% Reads (and the infrequent mark_scavenged) are synchronous; they see
+%% rows up to the last flush (eventual consistency, ~FLUSH_MS lag).
+handle_call(flush, _From, S) ->
+    {reply, ok, flush(S#state{flush_pending = false})};
+handle_call(Req, _From, #state{db = Db} = S) ->
+    {reply, do(Req, Db), S}.
 
-handle_cast(_Msg, S) -> {noreply, S}.
-terminate(_R, #state{db = Db}) when Db =/= undefined -> catch esqlite3:close(Db), ok;
-terminate(_R, _S) -> ok.
+%% Buffer writes; flush on size or on the timer. Never touches SQLite
+%% per event, so the mailbox drains instantly.
+handle_cast({apply_event, Event}, #state{buf = Buf} = S) ->
+    maybe_flush(S#state{buf = [Event | Buf]});
+handle_cast(_Msg, S) ->
+    {noreply, S}.
+
+handle_info(flush, S) ->
+    {noreply, flush(S#state{flush_pending = false})};
+handle_info(_Msg, S) ->
+    {noreply, S}.
+
+terminate(_R, #state{db = Db, buf = Buf}) ->
+    _ = flush_events(Db, Buf),   %% best-effort drain on shutdown
+    catch esqlite3:close(Db),
+    ok.
 
 %%--------------------------------------------------------------------
-%% Request handlers
+%% Write buffering
 
-do({apply_event, Event}, Db) -> upsert(Db, Event);
+maybe_flush(#state{buf = Buf} = S) when length(Buf) >= ?MAX_BATCH ->
+    {noreply, flush(S#state{flush_pending = false})};
+maybe_flush(#state{flush_pending = true} = S) ->
+    {noreply, S};
+maybe_flush(#state{flush_pending = false} = S) ->
+    erlang:send_after(?FLUSH_MS, self(), flush),
+    {noreply, S#state{flush_pending = true}}.
+
+%% Flush the buffer in one transaction (oldest-first), one fsync.
+flush(#state{buf = []} = S) -> S;
+flush(#state{db = Db, buf = Buf} = S) ->
+    flush_events(Db, Buf),
+    S#state{buf = []}.
+
+flush_events(_Db, []) -> ok;
+flush_events(Db, Buf) ->
+    Events = lists:reverse(Buf),
+    esqlite3:exec(Db, "BEGIN;"),
+    lists:foreach(fun(E) -> upsert(Db, E) end, Events),
+    esqlite3:exec(Db, "COMMIT;"),
+    ok.
+
+%%--------------------------------------------------------------------
+%% Request handlers (reads)
+
 do(overview, Db)             -> {ok, build_overview(Db)};
 do({get, Id}, Db)            -> row_to_session(esqlite3:q(Db, ?SELECT_ONE, [Id]));
 do({recent, Limit}, Db)      -> {ok, [as_session(R) || R <- esqlite3:q(Db, ?SELECT_RECENT, [Limit])]};
@@ -134,15 +190,13 @@ build_overview(Db) ->
 %%--------------------------------------------------------------------
 %% DB open + schema
 
-ensure_open(#state{db = Db} = S) when Db =/= undefined -> {ok, S};
-ensure_open(#state{} = S) ->
+open() ->
     DbPath = filename:join([hecate_parksim_service:data_dir(), "read_models",
                             "parking_sessions.sqlite"]),
     ok = filelib:ensure_dir(DbPath),
-    case esqlite3:open(DbPath) of
-        {ok, Db} -> ok = migrate(Db), {ok, S#state{db = Db}};
-        {error, _} = E -> E
-    end.
+    {ok, Db} = esqlite3:open(DbPath),
+    ok = migrate(Db),
+    {ok, Db}.
 
 migrate(Db) ->
     esqlite3:exec(Db,

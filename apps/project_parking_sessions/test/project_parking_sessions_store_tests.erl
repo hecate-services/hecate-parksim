@@ -41,6 +41,7 @@ store_test_() ->
     {setup, fun setup/0, fun cleanup/1,
      fun(_) ->
         seed(),
+        ok = project_parking_sessions_store:flush_now(),  %% writes are async; drain first
         {ok, O} = project_parking_sessions_store:overview(),
         {ok, A} = project_parking_sessions_store:get(<<"sess-A">>),
         Missing = project_parking_sessions_store:get(<<"nope">>),
