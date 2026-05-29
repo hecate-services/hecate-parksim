@@ -1,0 +1,15 @@
+{application, query_parking_sessions, [
+    {description, "QRY: read-only queries over the parking_sessions read model"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {query_parking_sessions_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        jsx,
+        project_parking_sessions
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]}
+]}.

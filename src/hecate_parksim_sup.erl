@@ -30,7 +30,11 @@ cowboy_child() ->
         {'_', [
             {"/health", hecate_om_health_handler, []},
             {"/api/run",   hecate_parksim_admin_api, [run]},
-            {"/api/event", hecate_parksim_admin_api, [event]}
+            {"/api/event", hecate_parksim_admin_api, [event]},
+            %% QRY read-model surface (specific paths before the :id catch).
+            {"/api/sessions/overview", query_parking_sessions_api, [overview]},
+            {"/api/sessions/recent",   query_parking_sessions_api, [recent]},
+            {"/api/sessions/:id",      query_parking_sessions_api, [session]}
         ]}
     ]),
     #{id => cowboy_listener,
