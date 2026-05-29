@@ -17,6 +17,20 @@
         {snapshot_store_adapter, reckon_evoq_adapter}
     ]},
     {kernel, [
-        {logger_level, info}
+        {logger_level, info},
+        %% Cap log-term formatting. reckon-db's Ra layer (and reckon-gater's
+        %% retry loop) can emit error/retry reports embedding the full
+        %% ra_server_state — a multi-MB nested term. Unbounded ~p
+        %% pretty-printing of those pegged a whole core: under log pressure
+        %% the default handler flips to synchronous mode and the *calling*
+        %% process formats inline (io_lib_pretty/characters_to_list), so the
+        %% store process did nothing but format giant terms forever
+        %% (scale-independent ~95% CPU). depth + chars_limit bound every
+        %% report to a sane size.
+        {logger, [
+            {handler, default, logger_std_h,
+                #{formatter => {logger_formatter,
+                    #{depth => 30, chars_limit => 8192}}}}
+        ]}
     ]}
 ].
