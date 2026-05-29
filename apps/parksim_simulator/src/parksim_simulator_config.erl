@@ -15,7 +15,28 @@ shape() ->
 time_scale() ->
     case os:getenv("PARKSIM_TIME_SCALE") of
         false -> application:get_env(hecate_parksim, time_scale, 1.0);
-        S     -> list_to_float(S)
+        S     -> parse_pos_float(S, 1.0)
+    end.
+
+%% @doc Parse a positive number from an env string, accepting BOTH
+%% integer ("30") and float ("30.0") forms. `list_to_float/1' throws
+%% badarg on an integer-form string, which previously crashed the
+%% simulated clock — and with it every visit's dwell sleep, so no
+%% session ever reached payment/exit. Falls back to Default on
+%% anything non-numeric or non-positive.
+-spec parse_pos_float(string(), float()) -> float().
+parse_pos_float(S, Default) ->
+    Parsed = case string:to_float(S) of
+                 {F, _} when is_float(F) -> F;
+                 _ ->
+                     case string:to_integer(S) of
+                         {I, _} when is_integer(I) -> float(I);
+                         _                         -> Default
+                     end
+             end,
+    case Parsed of
+        N when is_number(N), N > 0 -> float(N);
+        _                          -> Default
     end.
 
 seed() ->
