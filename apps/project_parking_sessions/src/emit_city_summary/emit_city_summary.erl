@@ -74,6 +74,10 @@ to_fact(City, O) ->
       total         => g(total, O),
       revenue_cents => g(revenue_cents, O),
       by_lot        => g(by_lot, O),
+      initiated     => g(initiated, O),
+      docked        => g(docked, O),
+      paid          => g(paid, O),
+      archived      => g(archived, O),
       observed_at   => erlang:system_time(millisecond)}.
 
 g(K, M) -> maps:get(K, M, 0).

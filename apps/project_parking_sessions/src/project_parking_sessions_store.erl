@@ -18,7 +18,7 @@
 -include_lib("guide_parking_session_lifecycle/include/parking_session_status.hrl").
 
 -export([start_link/0, apply_event/1, flush_now/0, overview/0, get/1, recent/1]).
--export([due_for_scavenge/2, mark_scavenged/1]).
+-export([due_for_scavenge/2, mark_scavenged/1, lot_in_progress/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 
 -define(MAX_BATCH, 500).   %% flush immediately once the buffer reaches this
@@ -48,6 +48,11 @@ flush_now() -> gen_server:call(?MODULE, flush).
 %% @doc Aggregate overview for the QRY side — counts, revenue, by-status, by-lot.
 -spec overview() -> {ok, map()} | {error, term()}.
 overview() -> gen_server:call(?MODULE, overview).
+
+%% @doc Live occupancy of a lot — non-archived sessions for that lot. Drives
+%% the simulator's capacity enforcement (turn arrivals away when full).
+-spec lot_in_progress(binary()) -> {ok, non_neg_integer()} | {error, term()}.
+lot_in_progress(LotId) -> gen_server:call(?MODULE, {lot_in_progress, LotId}).
 
 -spec get(binary()) -> {ok, map()} | {error, not_found | term()}.
 get(SessionId) -> gen_server:call(?MODULE, {get, SessionId}).
@@ -125,6 +130,10 @@ flush_events(Db, Buf) ->
 %% Request handlers (reads)
 
 do(overview, Db)             -> {ok, build_overview(Db)};
+do({lot_in_progress, LotId}, Db) ->
+    {ok, scalar(esqlite3:q(Db,
+        ["SELECT count(*) FROM sessions WHERE lot_id = ?1 "
+         "AND (status & ", i(?SESSION_ARCHIVED), ") = 0;"], [LotId]))};
 do({get, Id}, Db)            -> row_to_session(esqlite3:q(Db, ?SELECT_ONE, [Id]));
 do({recent, Limit}, Db)      -> {ok, [as_session(R) || R <- esqlite3:q(Db, ?SELECT_RECENT, [Limit])]};
 do({due_for_scavenge, Cutoff, Limit}, Db) ->
