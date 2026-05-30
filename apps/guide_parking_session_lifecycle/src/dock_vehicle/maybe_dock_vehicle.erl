@@ -63,7 +63,7 @@ dispatch(Cmd) ->
     Opts = #{
         store_id    => hecate_parksim_service:store_id(),
         adapter     => reckon_evoq_adapter,
-        consistency => strong
+        consistency => eventual
     },
     evoq_dispatcher:dispatch(EvoqCmd, Opts).
 
