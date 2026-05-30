@@ -16,6 +16,21 @@
         {subscription_adapter,   reckon_evoq_adapter},
         {snapshot_store_adapter, reckon_evoq_adapter}
     ]},
+    %% Mesh: connect to Leuven relay stations and publish the city-summary
+    %% fact under the io.macula realm tag. v1 needs no service cert — the SDK
+    %% uses an auto-generated peering identity, and the realm tag is a topic
+    %% namespace (= macula_realm:id(<<"io.macula">>)), not authorization. All
+    %% four tenants share the realm + seeds; the CITY is in the topic. These
+    %% are realm-wide constants (could move to env later).
+    {hecate_om, [
+        {realm, <<"ABB81B5A614B63551B400B810648C0C8A78EFAD845442630C94B46CC95D2FCD1">>},
+        {station_seeds, [
+            <<"https://station-be-leuven-centrum.macula.io:4433">>,
+            <<"https://station-be-leuven-gasthuisberg.macula.io:4433">>,
+            <<"https://station-be-leuven-heverlee.macula.io:4433">>,
+            <<"https://station-be-leuven-korbeek-lo.macula.io:4433">>
+        ]}
+    ]},
     {kernel, [
         {logger_level, info},
         %% Cap log-term formatting. reckon-db's Ra layer (and reckon-gater's

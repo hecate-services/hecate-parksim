@@ -27,6 +27,11 @@ init([]) ->
         %% Retention: read-model-driven scavenge of aged event streams.
         #{id    => scavenge_aged_sessions,
           start => {scavenge_aged_sessions, start_link, []},
+          type  => worker},
+        %% Mesh publisher: emits this city's summary fact on a cadence.
+        %% No-op while the service is dark (no mesh client).
+        #{id    => emit_city_summary,
+          start => {emit_city_summary, start_link, []},
           type  => worker}
     ],
     {ok, {SupFlags, Children}}.
