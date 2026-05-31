@@ -7,13 +7,13 @@
 -export([command_type/0]).
 -export([new/1, from_map/1, validate/1, to_map/1]).
 -export([stream_id/1]).
--export([get_vehicle_id/1, get_lat/1, get_lng/1, get_fare_cents/1,
+-export([get_vehicle_id/1, get_x/1, get_y/1, get_fare_cents/1,
          get_dropped_off_at/1]).
 
 -record(drop_off_passenger_v1, {
     vehicle_id     :: binary() | undefined,
-    lat            :: number() | undefined,
-    lng            :: number() | undefined,
+    x            :: number() | undefined,
+    y            :: number() | undefined,
     fare_cents     :: non_neg_integer() | undefined,
     dropped_off_at :: binary() | undefined
 }).
@@ -27,8 +27,8 @@ command_type() -> drop_off_passenger_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #drop_off_passenger_v1{
         vehicle_id     = Id,
-        lat            = maps:get(lat, P, undefined),
-        lng            = maps:get(lng, P, undefined),
+        x            = maps:get(x, P, undefined),
+        y            = maps:get(y, P, undefined),
         fare_cents     = maps:get(fare_cents, P, 0),
         dropped_off_at = maps:get(dropped_off_at, P, undefined)
     }};
@@ -38,16 +38,16 @@ new(_) -> {error, missing_aggregate_id}.
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #drop_off_passenger_v1{
         vehicle_id     = Id,
-        lat            = maps:get(<<"lat">>, M, undefined),
-        lng            = maps:get(<<"lng">>, M, undefined),
+        x            = maps:get(<<"x">>, M, undefined),
+        y            = maps:get(<<"y">>, M, undefined),
         fare_cents     = maps:get(<<"fare_cents">>, M, 0),
         dropped_off_at = maps:get(<<"dropped_off_at">>, M, undefined)
     }};
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #drop_off_passenger_v1{
         vehicle_id     = Id,
-        lat            = maps:get(lat, M, undefined),
-        lng            = maps:get(lng, M, undefined),
+        x            = maps:get(x, M, undefined),
+        y            = maps:get(y, M, undefined),
         fare_cents     = maps:get(fare_cents, M, 0),
         dropped_off_at = maps:get(dropped_off_at, M, undefined)
     }};
@@ -61,8 +61,8 @@ validate(_) -> ok.
 to_map(#drop_off_passenger_v1{} = C) ->
     #{command_type   => <<"drop_off_passenger">>,
       vehicle_id     => C#drop_off_passenger_v1.vehicle_id,
-      lat            => C#drop_off_passenger_v1.lat,
-      lng            => C#drop_off_passenger_v1.lng,
+      x            => C#drop_off_passenger_v1.x,
+      y            => C#drop_off_passenger_v1.y,
       fare_cents     => C#drop_off_passenger_v1.fare_cents,
       dropped_off_at => C#drop_off_passenger_v1.dropped_off_at}.
 
@@ -70,7 +70,7 @@ to_map(#drop_off_passenger_v1{} = C) ->
 stream_id(#drop_off_passenger_v1{vehicle_id = Id}) -> <<"vehicle-", Id/binary>>.
 
 get_vehicle_id(#drop_off_passenger_v1{vehicle_id = V})         -> V.
-get_lat(#drop_off_passenger_v1{lat = V})                       -> V.
-get_lng(#drop_off_passenger_v1{lng = V})                       -> V.
+get_x(#drop_off_passenger_v1{x = V})                       -> V.
+get_y(#drop_off_passenger_v1{y = V})                       -> V.
 get_fare_cents(#drop_off_passenger_v1{fare_cents = V})         -> V.
 get_dropped_off_at(#drop_off_passenger_v1{dropped_off_at = V}) -> V.

@@ -16,15 +16,15 @@
     battery_pct  :: number() | undefined,    %% 0..100, value at last event
 
     %% Position at last milestone (telemetry carries live position elsewhere).
-    lat          :: number() | undefined,
-    lng          :: number() | undefined,
+    x          :: number() | undefined,
+    y          :: number() | undefined,
 
     %% Current trip (set on dispatch, cleared on drop-off).
     trip_id      :: binary() | undefined,
-    pickup_lat   :: number() | undefined,
-    pickup_lng   :: number() | undefined,
-    dropoff_lat  :: number() | undefined,
-    dropoff_lng  :: number() | undefined,
+    pickup_x   :: number() | undefined,
+    pickup_y   :: number() | undefined,
+    dropoff_x  :: number() | undefined,
+    dropoff_y  :: number() | undefined,
 
     %% Facility / bay occupancy (set on dock, cleared on release).
     facility_id  :: binary() | undefined,

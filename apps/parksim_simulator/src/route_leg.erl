@@ -9,8 +9,7 @@
 %%%
 %%% Coordinate convention: points are `{X, Y}` in grid units (a cab at
 %%% `{2.4, 3.0}` is 40% along the street from intersection `{2,3}` toward
-%%% `{3,3}`). The fleet brain still calls these tuple slots `lat`/`lng` for
-%%% now; they carry grid coordinates, not geography.
+%%% `{3,3}`) — grid coordinates, not geography.
 %%%
 %%% Distances are returned in METRES (grid units scaled by `?UNIT_M` metres
 %%% per block) so the brain's metre-based physics — battery drain per km,

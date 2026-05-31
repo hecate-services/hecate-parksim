@@ -35,8 +35,8 @@ emit(Cmd) ->
         vehicle_id  => dock_at_facility_v1:get_vehicle_id(Cmd),
         facility_id => dock_at_facility_v1:get_facility_id(Cmd),
         bay_id      => dock_at_facility_v1:get_bay_id(Cmd),
-        lat         => dock_at_facility_v1:get_lat(Cmd),
-        lng         => dock_at_facility_v1:get_lng(Cmd),
+        x         => dock_at_facility_v1:get_x(Cmd),
+        y         => dock_at_facility_v1:get_y(Cmd),
         docked_at   => coalesce(dock_at_facility_v1:get_docked_at(Cmd), iso8601_now())
     }),
     {ok, [vehicle_docked_at_facility_v1:to_map(Ev)]}.

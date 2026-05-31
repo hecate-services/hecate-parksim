@@ -4,8 +4,8 @@
 -record(facility, {
     id    :: binary(),
     name  :: binary(),
-    lat   :: number(),
-    lng   :: number(),
+    x   :: number(),
+    y   :: number(),
     bays  :: pos_integer(),
     kinds :: [binary()]          %% subset of [<<"charge">>,<<"clean">>,<<"maintain">>]
 }).
@@ -23,7 +23,7 @@
 %%% A pending ride request the fleet brain may assign to an idle vehicle.
 -record(ride_request, {
     id      :: binary(),
-    pickup  :: {number(), number()},   %% {Lat, Lng}
+    pickup  :: {number(), number()},   %% {X, Y}
     dropoff :: {number(), number()},
     created :: integer()                %% sim unix seconds
 }).
@@ -37,12 +37,12 @@
     id          :: binary(),
     phase       :: atom(),       %% commissioned|cruising|dispatched|on_trip
                                  %% |returning|docked|servicing|depleted
-    lat         :: number(),
-    lng         :: number(),
+    x         :: number(),
+    y         :: number(),
     heading     :: number(),     %% degrees, for telemetry
     battery_pct :: number(),
 
-    path = []   :: [{number(), number()}],   %% remaining {Lat,Lng} waypoints
+    path = []   :: [{number(), number()}],   %% remaining {X,Y} waypoints
     leg  = none :: none | to_pickup | to_dropoff | to_facility,
 
     trip_id      :: binary() | undefined,

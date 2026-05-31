@@ -21,22 +21,22 @@ vid() -> <<"leuven-taxi-1">>.
 %% Production-shaped payloads (from simulate_fleet_core effects).
 commission_payload() ->
     #{vehicle_id => vid(), company_id => <<"leuven">>,
-      battery_pct => 100.0, lat => 50.8798, lng => 4.7005}.
+      battery_pct => 100.0, x => 50.8798, y => 4.7005}.
 dispatch_payload() ->
     #{vehicle_id => vid(), trip_id => <<"trip-1">>,
-      pickup_lat => 50.8788, pickup_lng => 4.7011,
-      dropoff_lat => 50.8814, dropoff_lng => 4.7155}.
-pickup_payload()  -> #{vehicle_id => vid(), lat => 50.8788, lng => 4.7011}.
+      pickup_x => 50.8788, pickup_y => 4.7011,
+      dropoff_x => 50.8814, dropoff_y => 4.7155}.
+pickup_payload()  -> #{vehicle_id => vid(), x => 50.8788, y => 4.7011}.
 dropoff_payload() -> #{vehicle_id => vid(), fare_cents => 850,
-                       lat => 50.8814, lng => 4.7155}.
+                       x => 50.8814, y => 4.7155}.
 return_payload()  -> #{vehicle_id => vid(), facility_id => <<"depot-centrum">>}.
 dock_payload()    -> #{vehicle_id => vid(), facility_id => <<"depot-centrum">>,
                        bay_id => <<"depot-centrum-bay-1">>,
-                       lat => 50.8810, lng => 4.7005}.
+                       x => 50.8810, y => 4.7005}.
 service_payload() -> #{vehicle_id => vid(), kind => <<"charge">>,
                        battery_pct => 100.0}.
 release_payload() -> #{vehicle_id => vid()}.
-deplete_payload() -> #{vehicle_id => vid(), lat => 50.88, lng => 4.70}.
+deplete_payload() -> #{vehicle_id => vid(), x => 50.88, y => 4.70}.
 
 %%====================================================================
 %% Layer A — the full happy-path lifecycle as one command sequence

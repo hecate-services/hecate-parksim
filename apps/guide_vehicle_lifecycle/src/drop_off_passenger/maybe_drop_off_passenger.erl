@@ -31,8 +31,8 @@ emit(Cmd, State) ->
     At = coalesce(drop_off_passenger_v1:get_dropped_off_at(Cmd), iso8601_now()),
     {ok, Dropped} = passenger_dropped_off_v1:new(#{
         vehicle_id     => drop_off_passenger_v1:get_vehicle_id(Cmd),
-        lat            => drop_off_passenger_v1:get_lat(Cmd),
-        lng            => drop_off_passenger_v1:get_lng(Cmd),
+        x            => drop_off_passenger_v1:get_x(Cmd),
+        y            => drop_off_passenger_v1:get_y(Cmd),
         dropped_off_at => At
     }),
     {ok, Fare} = fare_collected_v1:new(#{

@@ -31,8 +31,8 @@ emit(Cmd) ->
         vehicle_id      => commission_vehicle_v1:get_vehicle_id(Cmd),
         company_id      => commission_vehicle_v1:get_company_id(Cmd),
         battery_pct     => commission_vehicle_v1:get_battery_pct(Cmd),
-        lat             => commission_vehicle_v1:get_lat(Cmd),
-        lng             => commission_vehicle_v1:get_lng(Cmd),
+        x             => commission_vehicle_v1:get_x(Cmd),
+        y             => commission_vehicle_v1:get_y(Cmd),
         commissioned_at => coalesce(commission_vehicle_v1:get_commissioned_at(Cmd),
                                     iso8601_now())
     }),

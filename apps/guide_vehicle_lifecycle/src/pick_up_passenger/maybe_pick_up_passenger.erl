@@ -27,8 +27,8 @@ handle(Cmd, State) ->
 emit(Cmd) ->
     {ok, Ev} = passenger_picked_up_v1:new(#{
         vehicle_id   => pick_up_passenger_v1:get_vehicle_id(Cmd),
-        lat          => pick_up_passenger_v1:get_lat(Cmd),
-        lng          => pick_up_passenger_v1:get_lng(Cmd),
+        x          => pick_up_passenger_v1:get_x(Cmd),
+        y          => pick_up_passenger_v1:get_y(Cmd),
         picked_up_at => coalesce(pick_up_passenger_v1:get_picked_up_at(Cmd),
                                  iso8601_now())
     }),

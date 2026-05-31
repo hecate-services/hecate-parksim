@@ -44,10 +44,10 @@ emit(Cmd) ->
     {ok, Ev} = vehicle_dispatched_v1:new(#{
         vehicle_id    => dispatch_vehicle_v1:get_vehicle_id(Cmd),
         trip_id       => dispatch_vehicle_v1:get_trip_id(Cmd),
-        pickup_lat    => dispatch_vehicle_v1:get_pickup_lat(Cmd),
-        pickup_lng    => dispatch_vehicle_v1:get_pickup_lng(Cmd),
-        dropoff_lat   => dispatch_vehicle_v1:get_dropoff_lat(Cmd),
-        dropoff_lng   => dispatch_vehicle_v1:get_dropoff_lng(Cmd),
+        pickup_x    => dispatch_vehicle_v1:get_pickup_x(Cmd),
+        pickup_y    => dispatch_vehicle_v1:get_pickup_y(Cmd),
+        dropoff_x   => dispatch_vehicle_v1:get_dropoff_x(Cmd),
+        dropoff_y   => dispatch_vehicle_v1:get_dropoff_y(Cmd),
         dispatched_at => coalesce(dispatch_vehicle_v1:get_dispatched_at(Cmd),
                                   iso8601_now())
     }),

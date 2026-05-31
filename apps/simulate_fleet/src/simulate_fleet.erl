@@ -31,7 +31,7 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-%% @doc Live per-vehicle snapshot (id, phase, lat, lng, heading, battery).
+%% @doc Live per-vehicle snapshot (id, phase, x, y, heading, battery).
 -spec snapshot() -> [map()].
 snapshot() ->
     gen_server:call(?MODULE, snapshot).

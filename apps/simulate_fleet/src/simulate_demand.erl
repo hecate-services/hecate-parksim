@@ -78,9 +78,9 @@ sample_hotspot(Rng0) ->
     Target = U * Total,
     {pick(Hs, Target), Rng1}.
 
-pick([{_Name, Lat, Lng, W} | Rest], Target) ->
+pick([{_Name, X, Y, W} | Rest], Target) ->
     case Target =< W of
-        true  -> {Lat, Lng};
+        true  -> {X, Y};
         false -> pick(Rest, Target - W)
     end;
 pick([], _Target) ->

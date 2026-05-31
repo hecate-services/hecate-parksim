@@ -32,7 +32,7 @@
 -opaque t() :: #core{}.
 -export_type([t/0]).
 
-%% Routing: {Polyline :: [{Lat,Lng}], DistanceM :: number()}.
+%% Routing: {Polyline :: [{X,Y}], DistanceM :: number()}.
 -type route_fun() :: fun(({number(), number()}, {number(), number()}) ->
                             {[{number(), number()}], number()}).
 
@@ -53,15 +53,15 @@ new(#operator{fleet_size = N, home = HomeId} = Op, Params, Rng) ->
                 #{vehicle_id  => V#fveh.id,
                   company_id  => Op#operator.id,
                   battery_pct => V#fveh.battery_pct,
-                  lat => V#fveh.lat, lng => V#fveh.lng}}
+                  x => V#fveh.x, y => V#fveh.y}}
                || V <- Vehs0],
     Core = #core{operator = Op, params = Params, facilities = Facs,
                  bays_free = Bays, vehicles = Vehicles, rng = Rng},
     {Core, Effects}.
 
-new_vehicle(#operator{id = Op}, I, #facility{lat = Lat, lng = Lng}) ->
+new_vehicle(#operator{id = Op}, I, #facility{x = X, y = Y}) ->
     Id = iolist_to_binary([Op, "-taxi-", integer_to_list(I)]),
-    #fveh{id = Id, phase = commissioned, lat = Lat, lng = Lng,
+    #fveh{id = Id, phase = commissioned, x = X, y = Y,
           heading = 0.0, battery_pct = 100.0}.
 
 %%--------------------------------------------------------------------
@@ -114,17 +114,17 @@ try_take_fare(V, Ctx) ->
     case {Reqs, V#fveh.battery_pct >= MinPct} of
         {[Req | Rest], true} ->
             Route = maps:get(route, Ctx),
-            {Path, _D} = Route({V#fveh.lat, V#fveh.lng}, Req#ride_request.pickup),
+            {Path, _D} = Route({V#fveh.x, V#fveh.y}, Req#ride_request.pickup),
             V1 = V#fveh{phase = dispatched, leg = to_pickup, path = Path,
                         trip_id = trip_id(Req), pickup = Req#ride_request.pickup,
                         dropoff = Req#ride_request.dropoff, trip_m = 0.0},
             Ctx1 = Ctx#{requests => Rest},
             emit(V1, {dispatch_vehicle,
                       #{vehicle_id => V1#fveh.id, trip_id => V1#fveh.trip_id,
-                        pickup_lat => lat_of(V1#fveh.pickup),
-                        pickup_lng => lng_of(V1#fveh.pickup),
-                        dropoff_lat => lat_of(V1#fveh.dropoff),
-                        dropoff_lng => lng_of(V1#fveh.dropoff)}},
+                        pickup_x => x_of(V1#fveh.pickup),
+                        pickup_y => y_of(V1#fveh.pickup),
+                        dropoff_x => x_of(V1#fveh.dropoff),
+                        dropoff_y => y_of(V1#fveh.dropoff)}},
                  put_veh(V1, Ctx1));
         _ ->
             put_veh(V, Ctx)   %% no fare (or too flat) — idle this tick
@@ -137,8 +137,8 @@ begin_return(V, Ctx) ->
             put_veh(V, Ctx);   %% no free bay anywhere — wait, retry next tick
         #facility{id = FacId} = Fac ->
             Route = maps:get(route, Ctx),
-            {Path, _D} = Route({V#fveh.lat, V#fveh.lng},
-                               {Fac#facility.lat, Fac#facility.lng}),
+            {Path, _D} = Route({V#fveh.x, V#fveh.y},
+                               {Fac#facility.x, Fac#facility.y}),
             Core1 = take_bay(Core, FacId),   %% reserve the bay now
             V1 = V#fveh{phase = returning, leg = to_facility, path = Path,
                         dest_facility = FacId},
@@ -155,10 +155,10 @@ advance(V, Ctx, OnReach) ->
     Params = Core#core.params,
     BudgetM = maps:get(cruise_speed_mps, Params) * tick_sim_secs(Ctx),
     {NewPath, NewPos, MovedM, Done} =
-        walk(V#fveh.path, {V#fveh.lat, V#fveh.lng}, BudgetM),
+        walk(V#fveh.path, {V#fveh.x, V#fveh.y}, BudgetM),
     Drain = (MovedM / 1000.0) * maps:get(battery_drain_per_km, Params),
     Battery = V#fveh.battery_pct - Drain,
-    V1 = V#fveh{path = NewPath, lat = lat_of(NewPos), lng = lng_of(NewPos),
+    V1 = V#fveh{path = NewPath, x = x_of(NewPos), y = y_of(NewPos),
                 battery_pct = Battery, trip_m = V#fveh.trip_m + MovedM},
     case Battery =< 0.0 of
         true  -> deplete(V1, Ctx);
@@ -194,7 +194,7 @@ on_reach_pickup(V, Ctx) ->
     V1 = V#fveh{phase = on_trip, leg = to_dropoff, path = Path, trip_m = 0.0},
     emit(V1, {pick_up_passenger,
               #{vehicle_id => V1#fveh.id,
-                lat => V1#fveh.lat, lng => V1#fveh.lng}},
+                x => V1#fveh.x, y => V1#fveh.y}},
          put_veh(V1, Ctx)).
 
 on_reach_dropoff(V, Ctx) ->
@@ -204,7 +204,7 @@ on_reach_dropoff(V, Ctx) ->
                 trip_id = undefined, pickup = undefined, dropoff = undefined},
     emit(V1, {drop_off_passenger,
               #{vehicle_id => V1#fveh.id, fare_cents => Fare,
-                lat => V1#fveh.lat, lng => V1#fveh.lng}},
+                x => V1#fveh.x, y => V1#fveh.y}},
          put_veh(V1, Ctx)).
 
 on_reach_facility(V, Ctx) ->
@@ -217,12 +217,12 @@ on_reach_facility(V, Ctx) ->
     V1 = V#fveh{phase = servicing, leg = none, path = [],
                 dest_bay = Bay, service_kind = Kind,
                 service_until = SimUnix + Dur,
-                lat = Fac#facility.lat, lng = Fac#facility.lng},
+                x = Fac#facility.x, y = Fac#facility.y},
     %% Two milestones: dock, then begin service.
     Ctx2 = add_effect({dock_at_facility,
                        #{vehicle_id => V1#fveh.id, facility_id => FacId,
-                         bay_id => Bay, lat => Fac#facility.lat,
-                         lng => Fac#facility.lng}}, Ctx1),
+                         bay_id => Bay, x => Fac#facility.x,
+                         y => Fac#facility.y}}, Ctx1),
     emit(V1, {service_vehicle, #{vehicle_id => V1#fveh.id, kind => Kind}},
          put_veh(V1, Ctx2)).
 
@@ -257,8 +257,8 @@ maybe_tow(V, Ctx) ->
                 none -> put_veh(V, Ctx);
                 #facility{id = FacId} = Fac ->
                     Route = maps:get(route, Ctx),
-                    {Path, _D} = Route({V#fveh.lat, V#fveh.lng},
-                                       {Fac#facility.lat, Fac#facility.lng}),
+                    {Path, _D} = Route({V#fveh.x, V#fveh.y},
+                                       {Fac#facility.x, Fac#facility.y}),
                     Core1 = take_bay(Core, FacId),
                     V1 = V#fveh{phase = returning, leg = to_facility, path = Path,
                                 dest_facility = FacId, tow_until = undefined,
@@ -275,7 +275,7 @@ deplete(V, Ctx) ->
     V1 = V#fveh{phase = depleted, battery_pct = 0.0, leg = none, path = [],
                 tow_until = TowAt},
     emit(V1, {deplete_battery,
-              #{vehicle_id => V1#fveh.id, lat => V1#fveh.lat, lng => V1#fveh.lng}},
+              #{vehicle_id => V1#fveh.id, x => V1#fveh.x, y => V1#fveh.y}},
          put_veh(V1, Ctx)).
 
 %%--------------------------------------------------------------------
@@ -286,11 +286,11 @@ nearest_free_facility(V, #core{facilities = Facs, bays_free = Free}) ->
     case Avail of
         [] -> none;
         _  ->
-            Pos = {V#fveh.lat, V#fveh.lng},
+            Pos = {V#fveh.x, V#fveh.y},
             [Best | _] = lists:sort(
                 fun(A, B) ->
-                    route_leg:dist(Pos, {A#facility.lat, A#facility.lng})
-                        =< route_leg:dist(Pos, {B#facility.lat, B#facility.lng})
+                    route_leg:dist(Pos, {A#facility.x, A#facility.y})
+                        =< route_leg:dist(Pos, {B#facility.x, B#facility.y})
                 end, Avail),
             Best
     end.
@@ -331,7 +331,7 @@ vehicles(#core{vehicles = V}) -> maps:values(V).
 -spec snapshot(t()) -> [map()].
 snapshot(#core{vehicles = V}) ->
     [#{vehicle_id => F#fveh.id, phase => F#fveh.phase,
-       lat => F#fveh.lat, lng => F#fveh.lng,
+       x => F#fveh.x, y => F#fveh.y,
        heading => F#fveh.heading, battery_pct => round1(F#fveh.battery_pct)}
      || F <- maps:values(V)].
 
@@ -372,7 +372,7 @@ service_secs(Kind, Params) ->
 bay_id(FacId, #fveh{id = VId}) ->
     iolist_to_binary([FacId, "-bay-", VId]).
 
-lat_of({Lat, _}) -> Lat.
-lng_of({_, Lng}) -> Lng.
+x_of({X, _}) -> X.
+y_of({_, Y}) -> Y.
 
 round1(N) -> erlang:round(N * 10) / 10.

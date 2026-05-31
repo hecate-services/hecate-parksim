@@ -77,8 +77,8 @@ init_schema(Db) ->
         "  company_id   TEXT,"
         "  status       INTEGER NOT NULL DEFAULT 0,"  %% current phase bit
         "  battery_pct  REAL,"
-        "  lat          REAL,"
-        "  lng          REAL,"
+        "  x          REAL,"
+        "  y          REAL,"
         "  facility_id  TEXT,"
         "  service_kind TEXT,"
         "  trips        INTEGER NOT NULL DEFAULT 0,"
@@ -154,14 +154,14 @@ apply_typed(_Other, _VId, _Ev, _Db) -> ok.
 upsert_vehicle(Db, VId, Ev) ->
     esqlite3:q(Db,
         "INSERT INTO vehicles"
-        " (vehicle_id, company_id, battery_pct, lat, lng, commissioned_at, status)"
+        " (vehicle_id, company_id, battery_pct, x, y, commissioned_at, status)"
         " VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0)"
         " ON CONFLICT(vehicle_id) DO UPDATE SET"
         "   company_id=excluded.company_id, battery_pct=excluded.battery_pct,"
-        "   lat=excluded.lat, lng=excluded.lng,"
+        "   x=excluded.x, y=excluded.y,"
         "   commissioned_at=excluded.commissioned_at",
         [VId, maps:get(company_id, Ev, undefined), num(maps:get(battery_pct, Ev, 100)),
-         num(maps:get(lat, Ev, undefined)), num(maps:get(lng, Ev, undefined)),
+         num(maps:get(x, Ev, undefined)), num(maps:get(y, Ev, undefined)),
          maps:get(commissioned_at, Ev, undefined)]),
     ok.
 
@@ -178,11 +178,11 @@ set_phase(Db, VId, Phase) ->
     ok.
 
 set_pos(Db, VId, Ev) ->
-    case {maps:get(lat, Ev, undefined), maps:get(lng, Ev, undefined)} of
+    case {maps:get(x, Ev, undefined), maps:get(y, Ev, undefined)} of
         {undefined, _} -> ok;
-        {Lat, Lng} ->
-            esqlite3:q(Db, "UPDATE vehicles SET lat=?1, lng=?2 WHERE vehicle_id=?3",
-                       [num(Lat), num(Lng), VId]),
+        {X, Y} ->
+            esqlite3:q(Db, "UPDATE vehicles SET x=?1, y=?2 WHERE vehicle_id=?3",
+                       [num(X), num(Y), VId]),
             ok
     end.
 
@@ -244,13 +244,13 @@ do_overview(#state{db = Db}) ->
 
 do_vehicles(#state{db = Db}) ->
     Rows = esqlite3:q(Db,
-        "SELECT vehicle_id, company_id, status, battery_pct, lat, lng,"
+        "SELECT vehicle_id, company_id, status, battery_pct, x, y,"
         "       facility_id, service_kind, trips, fares_cents FROM vehicles;"),
     [#{vehicle_id => V, company_id => Co, phase => phase_name(St),
-       battery_pct => Bat, lat => Lat, lng => Lng,
+       battery_pct => Bat, x => X, y => Y,
        facility_id => Fac, service_kind => Svc,
        trips => Tr, fares_cents => Fc}
-     || [V, Co, St, Bat, Lat, Lng, Fac, Svc, Tr, Fc] <- Rows].
+     || [V, Co, St, Bat, X, Y, Fac, Svc, Tr, Fc] <- Rows].
 
 do_by_facility(#state{db = Db}) ->
     Rows = esqlite3:q(Db,

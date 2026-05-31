@@ -213,9 +213,9 @@ telemetry mesh fact. That is the real new work.
   prior dashboard task).
 - Cross-operator vehicle handoff as a later "wow" (a cab crossing into
   another node's coverage).
-- **`lat/lng → x/y` rename:** grid coordinates still flow through the
-  `lat`/`lng` field slots across the event spine. An honest rename to `x`/`y`
-  is the pending cleanup (deferred to keep the city change off the event spine).
+- ~~`lat/lng → x/y` rename~~ **DONE 2026-05-31:** the position fields are now
+  `x`/`y` (grid units) across the brain, events, commands, read model,
+  telemetry, and the realm map — no geographic misnomers remain.
 - **Stale README:** current `README.md` claims parksim is a *client*
   simulator (fires RPCs, owns no state). The code actually owns the domain
   (aggregates + stores). Rewrite the README for the robotaxi reframe.

@@ -18,7 +18,7 @@
 
 -export([
     vehicle_id/1, company_id/1, status_flags/1, battery_pct/1,
-    lat/1, lng/1, trip_id/1, facility_id/1, bay_id/1, service_kind/1,
+    x/1, y/1, trip_id/1, facility_id/1, bay_id/1, service_kind/1,
     trips_completed/1, fares_cents/1,
     has_status/2, is_commissioned/1, is_cruising/1, is_dispatched/1,
     is_on_trip/1, is_returning/1, is_docked/1, is_servicing/1, is_depleted/1,
@@ -39,36 +39,36 @@ apply_event(S, #{event_type := <<"vehicle_commissioned">>} = Ev) ->
     (set_phase(S, ?VEH_COMMISSIONED))#vehicle_state{
         company_id      = g(company_id, Ev, S#vehicle_state.company_id),
         battery_pct     = g(battery_pct, Ev, S#vehicle_state.battery_pct),
-        lat             = g(lat, Ev, S#vehicle_state.lat),
-        lng             = g(lng, Ev, S#vehicle_state.lng),
+        x             = g(x, Ev, S#vehicle_state.x),
+        y             = g(y, Ev, S#vehicle_state.y),
         commissioned_at = g(commissioned_at, Ev, S#vehicle_state.commissioned_at),
         last_event_at   = g(commissioned_at, Ev, S#vehicle_state.last_event_at)
     };
 apply_event(S, #{event_type := <<"vehicle_dispatched">>} = Ev) ->
     (set_phase(S, ?VEH_DISPATCHED))#vehicle_state{
         trip_id       = g(trip_id, Ev, S#vehicle_state.trip_id),
-        pickup_lat    = g(pickup_lat, Ev, S#vehicle_state.pickup_lat),
-        pickup_lng    = g(pickup_lng, Ev, S#vehicle_state.pickup_lng),
-        dropoff_lat   = g(dropoff_lat, Ev, S#vehicle_state.dropoff_lat),
-        dropoff_lng   = g(dropoff_lng, Ev, S#vehicle_state.dropoff_lng),
+        pickup_x    = g(pickup_x, Ev, S#vehicle_state.pickup_x),
+        pickup_y    = g(pickup_y, Ev, S#vehicle_state.pickup_y),
+        dropoff_x   = g(dropoff_x, Ev, S#vehicle_state.dropoff_x),
+        dropoff_y   = g(dropoff_y, Ev, S#vehicle_state.dropoff_y),
         last_event_at = g(dispatched_at, Ev, S#vehicle_state.last_event_at)
     };
 apply_event(S, #{event_type := <<"passenger_picked_up">>} = Ev) ->
     (set_phase(S, ?VEH_ON_TRIP))#vehicle_state{
-        lat           = g(lat, Ev, S#vehicle_state.lat),
-        lng           = g(lng, Ev, S#vehicle_state.lng),
+        x           = g(x, Ev, S#vehicle_state.x),
+        y           = g(y, Ev, S#vehicle_state.y),
         last_event_at = g(picked_up_at, Ev, S#vehicle_state.last_event_at)
     };
 apply_event(S, #{event_type := <<"passenger_dropped_off">>} = Ev) ->
     %% Trip complete -> back to the revenue pool. Clear the trip slots.
     (set_phase(S, ?VEH_CRUISING))#vehicle_state{
-        lat             = g(lat, Ev, S#vehicle_state.lat),
-        lng             = g(lng, Ev, S#vehicle_state.lng),
+        x             = g(x, Ev, S#vehicle_state.x),
+        y             = g(y, Ev, S#vehicle_state.y),
         trip_id         = undefined,
-        pickup_lat      = undefined,
-        pickup_lng      = undefined,
-        dropoff_lat     = undefined,
-        dropoff_lng     = undefined,
+        pickup_x      = undefined,
+        pickup_y      = undefined,
+        dropoff_x     = undefined,
+        dropoff_y     = undefined,
         trips_completed = S#vehicle_state.trips_completed + 1,
         last_event_at   = g(dropped_off_at, Ev, S#vehicle_state.last_event_at)
     };
@@ -87,8 +87,8 @@ apply_event(S, #{event_type := <<"vehicle_docked_at_facility">>} = Ev) ->
     (set_phase(S, ?VEH_DOCKED))#vehicle_state{
         facility_id   = g(facility_id, Ev, S#vehicle_state.facility_id),
         bay_id        = g(bay_id, Ev, S#vehicle_state.bay_id),
-        lat           = g(lat, Ev, S#vehicle_state.lat),
-        lng           = g(lng, Ev, S#vehicle_state.lng),
+        x           = g(x, Ev, S#vehicle_state.x),
+        y           = g(y, Ev, S#vehicle_state.y),
         last_event_at = g(docked_at, Ev, S#vehicle_state.last_event_at)
     };
 apply_event(S, #{event_type := <<"vehicle_serviced">>} = Ev) ->
@@ -114,8 +114,8 @@ apply_event(S, #{event_type := <<"vehicle_released">>} = Ev) ->
 apply_event(S, #{event_type := <<"battery_depleted">>} = Ev) ->
     (set_phase(S, ?VEH_DEPLETED))#vehicle_state{
         battery_pct   = 0,
-        lat           = g(lat, Ev, S#vehicle_state.lat),
-        lng           = g(lng, Ev, S#vehicle_state.lng),
+        x           = g(x, Ev, S#vehicle_state.x),
+        y           = g(y, Ev, S#vehicle_state.y),
         last_event_at = g(depleted_at, Ev, S#vehicle_state.last_event_at)
     };
 apply_event(S, _UnknownEvent) ->
@@ -128,13 +128,13 @@ to_map(#vehicle_state{} = S) ->
       company_id      => S#vehicle_state.company_id,
       status_flags    => S#vehicle_state.status_flags,
       battery_pct     => S#vehicle_state.battery_pct,
-      lat             => S#vehicle_state.lat,
-      lng             => S#vehicle_state.lng,
+      x             => S#vehicle_state.x,
+      y             => S#vehicle_state.y,
       trip_id         => S#vehicle_state.trip_id,
-      pickup_lat      => S#vehicle_state.pickup_lat,
-      pickup_lng      => S#vehicle_state.pickup_lng,
-      dropoff_lat     => S#vehicle_state.dropoff_lat,
-      dropoff_lng     => S#vehicle_state.dropoff_lng,
+      pickup_x      => S#vehicle_state.pickup_x,
+      pickup_y      => S#vehicle_state.pickup_y,
+      dropoff_x     => S#vehicle_state.dropoff_x,
+      dropoff_y     => S#vehicle_state.dropoff_y,
       facility_id     => S#vehicle_state.facility_id,
       bay_id          => S#vehicle_state.bay_id,
       service_kind    => S#vehicle_state.service_kind,
@@ -160,8 +160,8 @@ vehicle_id(#vehicle_state{vehicle_id = V})           -> V.
 company_id(#vehicle_state{company_id = V})           -> V.
 status_flags(#vehicle_state{status_flags = V})       -> V.
 battery_pct(#vehicle_state{battery_pct = V})         -> V.
-lat(#vehicle_state{lat = V})                         -> V.
-lng(#vehicle_state{lng = V})                         -> V.
+x(#vehicle_state{x = V})                         -> V.
+y(#vehicle_state{y = V})                         -> V.
 trip_id(#vehicle_state{trip_id = V})                 -> V.
 facility_id(#vehicle_state{facility_id = V})         -> V.
 bay_id(#vehicle_state{bay_id = V})                   -> V.

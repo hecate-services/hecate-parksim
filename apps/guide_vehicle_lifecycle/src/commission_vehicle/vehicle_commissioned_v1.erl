@@ -6,14 +6,14 @@
 -export([event_type/0]).
 -export([new/1, from_map/1, to_map/1]).
 -export([get_vehicle_id/1, get_company_id/1, get_battery_pct/1,
-         get_lat/1, get_lng/1, get_commissioned_at/1]).
+         get_x/1, get_y/1, get_commissioned_at/1]).
 
 -record(vehicle_commissioned_v1, {
     vehicle_id      :: binary() | undefined,
     company_id      :: binary() | undefined,
     battery_pct     :: number() | undefined,
-    lat             :: number() | undefined,
-    lng             :: number() | undefined,
+    x             :: number() | undefined,
+    y             :: number() | undefined,
     commissioned_at :: binary() | undefined
 }).
 
@@ -28,8 +28,8 @@ new(#{vehicle_id := Id} = P) ->
         vehicle_id      = Id,
         company_id      = maps:get(company_id, P, undefined),
         battery_pct     = maps:get(battery_pct, P, 100),
-        lat             = maps:get(lat, P, undefined),
-        lng             = maps:get(lng, P, undefined),
+        x             = maps:get(x, P, undefined),
+        y             = maps:get(y, P, undefined),
         commissioned_at = maps:get(commissioned_at, P, undefined)
     }}.
 
@@ -39,8 +39,8 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
         vehicle_id      = Id,
         company_id      = maps:get(<<"company_id">>, M, undefined),
         battery_pct     = maps:get(<<"battery_pct">>, M, 100),
-        lat             = maps:get(<<"lat">>, M, undefined),
-        lng             = maps:get(<<"lng">>, M, undefined),
+        x             = maps:get(<<"x">>, M, undefined),
+        y             = maps:get(<<"y">>, M, undefined),
         commissioned_at = maps:get(<<"commissioned_at">>, M, undefined)
     }};
 from_map(#{vehicle_id := Id} = M) ->
@@ -48,8 +48,8 @@ from_map(#{vehicle_id := Id} = M) ->
         vehicle_id      = Id,
         company_id      = maps:get(company_id, M, undefined),
         battery_pct     = maps:get(battery_pct, M, 100),
-        lat             = maps:get(lat, M, undefined),
-        lng             = maps:get(lng, M, undefined),
+        x             = maps:get(x, M, undefined),
+        y             = maps:get(y, M, undefined),
         commissioned_at = maps:get(commissioned_at, M, undefined)
     }}.
 
@@ -59,13 +59,13 @@ to_map(#vehicle_commissioned_v1{} = E) ->
       vehicle_id      => E#vehicle_commissioned_v1.vehicle_id,
       company_id      => E#vehicle_commissioned_v1.company_id,
       battery_pct     => E#vehicle_commissioned_v1.battery_pct,
-      lat             => E#vehicle_commissioned_v1.lat,
-      lng             => E#vehicle_commissioned_v1.lng,
+      x             => E#vehicle_commissioned_v1.x,
+      y             => E#vehicle_commissioned_v1.y,
       commissioned_at => E#vehicle_commissioned_v1.commissioned_at}.
 
 get_vehicle_id(#vehicle_commissioned_v1{vehicle_id = V})           -> V.
 get_company_id(#vehicle_commissioned_v1{company_id = V})           -> V.
 get_battery_pct(#vehicle_commissioned_v1{battery_pct = V})         -> V.
-get_lat(#vehicle_commissioned_v1{lat = V})                         -> V.
-get_lng(#vehicle_commissioned_v1{lng = V})                         -> V.
+get_x(#vehicle_commissioned_v1{x = V})                         -> V.
+get_y(#vehicle_commissioned_v1{y = V})                         -> V.
 get_commissioned_at(#vehicle_commissioned_v1{commissioned_at = V}) -> V.

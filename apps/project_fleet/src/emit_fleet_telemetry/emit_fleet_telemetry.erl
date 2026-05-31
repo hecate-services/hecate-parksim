@@ -3,7 +3,7 @@
 %%%
 %%% Telemetry is NOT a domain event and NOT from the read model — it is the
 %%% live, high-frequency kinematic state held in the fleet brain
-%%% (`simulate_fleet:snapshot/0'): each vehicle's current lat/lng, heading,
+%%% (`simulate_fleet:snapshot/0'): each vehicle's current x/y, heading,
 %%% battery, and phase. The realm-side consumer plots these as moving dots;
 %%% only the sparse milestones become events. Publishing position as a fact
 %%% (not an event) is what keeps the J4105s cool — no store writes per move.

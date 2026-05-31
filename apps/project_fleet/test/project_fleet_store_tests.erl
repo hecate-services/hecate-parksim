@@ -15,23 +15,23 @@ fleet_read_model_test() ->
         V = <<"leuven-taxi-1">>,
         [ok = project_fleet_store:apply_event(E) || E <- [
             ev(<<"vehicle_commissioned">>, V, #{company_id => <<"leuven">>,
-                battery_pct => 100.0, lat => 50.88, lng => 4.70}),
+                battery_pct => 100.0, x => 50.88, y => 4.70}),
             ev(<<"vehicle_dispatched">>, V, #{}),
-            ev(<<"passenger_picked_up">>, V, #{lat => 50.879, lng => 4.701}),
-            ev(<<"passenger_dropped_off">>, V, #{lat => 50.876, lng => 4.700}),
+            ev(<<"passenger_picked_up">>, V, #{x => 50.879, y => 4.701}),
+            ev(<<"passenger_dropped_off">>, V, #{x => 50.876, y => 4.700}),
             ev(<<"fare_collected">>, V, #{amount_cents => 1450}),
             ev(<<"vehicle_returning">>, V, #{facility_id => <<"depot-centrum">>}),
             ev(<<"vehicle_docked_at_facility">>, V, #{facility_id => <<"depot-centrum">>,
-                bay_id => <<"b1">>, lat => 50.881, lng => 4.70}),
+                bay_id => <<"b1">>, x => 50.881, y => 4.70}),
             ev(<<"vehicle_serviced">>, V, #{service_kind => <<"charge">>, battery_pct => 100.0})
         ]],
 
         V2 = <<"leuven-taxi-2">>,
         [ok = project_fleet_store:apply_event(E) || E <- [
             ev(<<"vehicle_commissioned">>, V2, #{company_id => <<"leuven">>,
-                battery_pct => 100.0, lat => 50.88, lng => 4.70}),
+                battery_pct => 100.0, x => 50.88, y => 4.70}),
             ev(<<"vehicle_dispatched">>, V2, #{}),
-            ev(<<"battery_depleted">>, V2, #{lat => 50.87, lng => 4.69})
+            ev(<<"battery_depleted">>, V2, #{x => 50.87, y => 4.69})
         ]],
 
         Ov = project_fleet_store:overview(),
@@ -68,7 +68,7 @@ exclusive_phase_test() ->
         V = <<"x">>,
         project_fleet_store:apply_event(
             ev(<<"vehicle_commissioned">>, V, #{company_id => <<"l">>,
-               battery_pct => 100.0, lat => 50.0, lng => 4.0})),
+               battery_pct => 100.0, x => 50.0, y => 4.0})),
         ?assertEqual(<<"commissioned">>, phase_of(V)),
         project_fleet_store:apply_event(ev(<<"vehicle_dispatched">>, V, #{})),
         ?assertEqual(<<"dispatched">>, phase_of(V)),

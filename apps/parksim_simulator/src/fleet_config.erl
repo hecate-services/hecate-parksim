@@ -9,8 +9,7 @@
 %%% stream / mesh-topic wiring is unchanged); only the brand name + colour
 %%% differ.
 %%%
-%%% Coordinates use the `lat'/`lng' record/key slots but carry GRID units, not
-%%% geography (a `lat/lng -> x/y` rename is a pending cleanup).
+%%% Coordinates are grid units (`x'/`y' in 0..?GRID_N), not geography.
 -module(fleet_config).
 
 -include_lib("parksim_simulator/include/fleet.hrl").
@@ -50,13 +49,13 @@ operator() ->
 -spec facilities() -> [#facility{}].
 facilities() ->
     [#facility{id = <<"depot-centrum">>,   name = <<"Central Depot">>,
-               lat = 3, lng = 3, bays = 6,
+               x = 3, y = 3, bays = 6,
                kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]},
      #facility{id = <<"depot-heverlee">>,  name = <<"Westside Depot">>,
-               lat = 1, lng = 5, bays = 5,
+               x = 1, y = 5, bays = 5,
                kinds = [<<"charge">>, <<"clean">>]},
      #facility{id = <<"depot-kessel-lo">>, name = <<"Eastside Depot">>,
-               lat = 5, lng = 1, bays = 5,
+               x = 5, y = 1, bays = 5,
                kinds = [<<"charge">>, <<"clean">>]}].
 
 %%--------------------------------------------------------------------

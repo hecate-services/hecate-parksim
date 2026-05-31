@@ -40,8 +40,8 @@ is_moving(State) ->
 emit(Cmd) ->
     {ok, Ev} = battery_depleted_v1:new(#{
         vehicle_id  => deplete_battery_v1:get_vehicle_id(Cmd),
-        lat         => deplete_battery_v1:get_lat(Cmd),
-        lng         => deplete_battery_v1:get_lng(Cmd),
+        x         => deplete_battery_v1:get_x(Cmd),
+        y         => deplete_battery_v1:get_y(Cmd),
         depleted_at => coalesce(deplete_battery_v1:get_depleted_at(Cmd),
                                 iso8601_now())
     }),
