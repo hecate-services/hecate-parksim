@@ -14,12 +14,31 @@
 -include("vehicle_state.hrl").
 
 -export([state_module/0, init/1, execute/2, apply/2]).
+-export([stream_id/1]).
 
 -type state() :: #vehicle_state{}.
 -export_type([state/0]).
 
 -spec state_module() -> module().
 state_module() -> vehicle_state.
+
+%% @doc The reckon-db stream id for a vehicle.
+%%
+%% reckon-db rejects stream ids that don't match `^[a-z]{1,32}-[a-f0-9]{32}$'
+%% (`reckon_gater_stream_id'), so the human vehicle id ("leuven-taxi-1") cannot
+%% be used as the evoq AggregateId == stream id directly — every dispatch then
+%% returns `{error, {invalid_stream_id, malformed_user_id, _}}', which the fleet
+%% brain swallows, so no vehicle events persist and the read model stays empty.
+%%
+%% Derive a STABLE, compliant id as `veh-<md5(vehicle_id)>' (md5 = 16 bytes =
+%% exactly 32 lowercase hex). Deterministic, so every command for a vehicle
+%% lands on the SAME store stream without threading an extra id through
+%% commands/events; the human `vehicle_id' stays in each event payload, which
+%% is what the read model and telemetry key on.
+-spec stream_id(binary()) -> binary().
+stream_id(VehicleId) when is_binary(VehicleId) ->
+    Hex = binary:encode_hex(crypto:hash(md5, VehicleId), lowercase),
+    <<"veh-", Hex/binary>>.
 
 -spec init(binary()) -> {ok, state()}.
 init(AggregateId) ->

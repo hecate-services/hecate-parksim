@@ -60,7 +60,7 @@ dispatch(#{} = Data) ->
 dispatch(Cmd) ->
     VehicleId = deplete_battery_v1:get_vehicle_id(Cmd),
     EvoqCmd = evoq_command:new(
-        deplete_battery, vehicle_aggregate, VehicleId,
+        deplete_battery, vehicle_aggregate, vehicle_aggregate:stream_id(VehicleId),
         deplete_battery_v1:to_map(Cmd),
         #{timestamp => erlang:system_time(millisecond)}),
     Opts = #{store_id    => hecate_parksim_service:store_id(),

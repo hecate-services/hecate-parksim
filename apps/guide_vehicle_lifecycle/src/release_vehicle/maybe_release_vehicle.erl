@@ -49,7 +49,7 @@ dispatch(#{} = Data) ->
 dispatch(Cmd) ->
     VehicleId = release_vehicle_v1:get_vehicle_id(Cmd),
     EvoqCmd = evoq_command:new(
-        release_vehicle, vehicle_aggregate, VehicleId,
+        release_vehicle, vehicle_aggregate, vehicle_aggregate:stream_id(VehicleId),
         release_vehicle_v1:to_map(Cmd),
         #{timestamp => erlang:system_time(millisecond)}),
     Opts = #{store_id    => hecate_parksim_service:store_id(),

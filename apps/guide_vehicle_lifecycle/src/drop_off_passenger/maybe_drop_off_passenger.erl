@@ -57,7 +57,7 @@ dispatch(#{} = Data) ->
 dispatch(Cmd) ->
     VehicleId = drop_off_passenger_v1:get_vehicle_id(Cmd),
     EvoqCmd = evoq_command:new(
-        drop_off_passenger, vehicle_aggregate, VehicleId,
+        drop_off_passenger, vehicle_aggregate, vehicle_aggregate:stream_id(VehicleId),
         drop_off_passenger_v1:to_map(Cmd),
         #{timestamp => erlang:system_time(millisecond)}),
     Opts = #{store_id    => hecate_parksim_service:store_id(),
