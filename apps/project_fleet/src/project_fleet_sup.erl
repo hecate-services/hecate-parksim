@@ -15,13 +15,10 @@ init([]) ->
     SupFlags = #{strategy => one_for_one, intensity => 10, period => 10},
     Store = #{id => project_fleet_store,
               start => {project_fleet_store, start_link, []}},
-    %% The projection is started + kept alive by a keeper rather than wired
-    %% as a direct child: at boot evoq_projection:start_link races the store's
-    %% cluster registration and ends up a permanent-but-dead `undefined' child
-    %% the supervisor never retries. The keeper retries until it sticks and
-    %% relaunches it on death. See project_fleet_projection_starter.
-    Projection = #{id => project_fleet_projection_starter,
-                   start => {project_fleet_projection_starter, start_link, []}},
+    Projection = #{id => vehicle_event_to_read_model,
+                   start => {evoq_projection, start_link,
+                             [vehicle_event_to_read_model, #{},
+                              #{store_id => hecate_parksim_service:store_id()}]}},
     %% Mesh publishers: per-operator summary (5s) + live telemetry (2s).
     Summary = #{id => emit_fleet_summary,
                 start => {emit_fleet_summary, start_link, []}},
