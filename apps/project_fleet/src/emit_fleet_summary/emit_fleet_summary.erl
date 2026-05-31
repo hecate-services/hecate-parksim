@@ -55,29 +55,54 @@ publish(#state{company = Company, topic = Topic}) ->
             ok
     end.
 
-%% The public integration-fact contract: a stable subset of the read model.
-%% Reads the store directly (it lives in this app) rather than via the
-%% query_fleet facade — that would make project_fleet depend on query_fleet,
-%% which already depends on project_fleet (a cycle).
+%% The public integration-fact contract: a stable rollup of the operator's
+%% fleet. CQRS split by data NATURE:
+%%   * Live phase distribution (how many cabs are cruising / on_trip / ...
+%%     right now) is current operational state — taken from the fleet brain
+%%     (`simulate_fleet:snapshot/0'), the SAME source the telemetry emitter
+%%     uses, so summary and telemetry are always consistent.
+%%   * Lifetime tallies (trips completed, revenue earned) and facility
+%%     occupancy are genuinely accumulated history — taken from the
+%%     event-sourced read model (`project_fleet_store').
+%% Both degrade safely to empty defaults at boot (the sim or the store may
+%% not be up yet); never let that crash the emitter.
 to_fact(Company) ->
-    Ov  = safe(fun project_fleet_store:overview/0, #{}),
-    Fac = safe(fun project_fleet_store:by_facility/0, []),
+    Snap   = safe(fun simulate_fleet:snapshot/0, []),
+    Counts = phase_counts(Snap),
+    Ov     = safe(fun project_fleet_store:overview/0, #{}),   %% lifetime tallies
+    Fac    = safe(fun project_fleet_store:by_facility/0, []),
+    Cruising   = c(cruising, Counts),
+    Dispatched = c(dispatched, Counts),
+    OnTrip     = c(on_trip, Counts),
     #{type          => fleet_summary,
       company       => Company,
-      total         => g(total, Ov),
-      cruising      => g(cruising, Ov),
-      dispatched    => g(dispatched, Ov),
-      on_trip       => g(on_trip, Ov),
-      returning     => g(returning, Ov),
-      docked        => g(docked, Ov),
-      servicing     => g(servicing, Ov),
+      total         => length(Snap),
+      %% commissioned cabs (only at the very first tick) fold into cruising.
+      cruising      => Cruising + c(commissioned, Counts),
+      dispatched    => Dispatched,
+      on_trip       => OnTrip,
+      returning     => c(returning, Counts),
+      docked        => c(docked, Counts),
+      servicing     => c(servicing, Counts),
+      %% the brain snapshot carries no service_kind, so 'charging' (a subset
+      %% of servicing) comes from the read model; 0 until trips accrue there.
       charging      => g(charging, Ov),
-      depleted      => g(depleted, Ov),
-      active        => g(active, Ov),
+      depleted      => c(depleted, Counts),
+      active        => Cruising + Dispatched + OnTrip,   %% on the market
       trips         => g(trips, Ov),
       revenue_cents => g(revenue_cents, Ov),
       facilities    => Fac,
       observed_at   => erlang:system_time(millisecond)}.
+
+%% Count live vehicles by phase atom from the brain snapshot.
+phase_counts(Snap) ->
+    lists:foldl(
+      fun(V, Acc) ->
+          P = maps:get(phase, V, undefined),
+          maps:update_with(P, fun(N) -> N + 1 end, 1, Acc)
+      end, #{}, Snap).
+
+c(Phase, Counts) -> maps:get(Phase, Counts, 0).
 
 g(K, M) -> maps:get(K, M, 0).
 
