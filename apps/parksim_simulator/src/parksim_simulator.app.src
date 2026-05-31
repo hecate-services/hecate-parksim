@@ -3,7 +3,7 @@
     {vsn, "0.2.0"},
     {registered, []},
     {mod, {parksim_simulator_app, []}},
-    {applications, [kernel, stdlib, crypto, inets, ssl, jsx, hecate_om]},
+    {applications, [kernel, stdlib, crypto, hecate_om]},
     {env, []},
     {modules, []},
     {licenses, ["Apache-2.0"]}

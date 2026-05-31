@@ -1,126 +1,106 @@
-%%% @doc OSRM road-routing client for the fleet simulator.
+%%% @doc Grid-city leg router for the robotaxi fleet.
 %%%
-%%% `route_leg/2` asks the local OSRM sidecar (osrm-routed, MLD) for the
-%%% driving route between two points and returns the road polyline plus its
-%%% real distance and duration. If OSRM is unreachable or replies oddly, it
-%%% falls back to a straight line (haversine × a detour fudge) so the sim
-%%% always gets a usable leg — a router outage only degrades visual realism,
-%%% never blocks the fleet.
+%%% The demo city is an imaginary `?GRID_N x ?GRID_N` checkerboard: a lattice
+%%% of intersections at integer coordinates `0..?GRID_N` on each axis, with
+%%% streets running along every lattice line. There is NO real-world map and
+%%% NO external router (this replaced an OSRM sidecar): a leg is just the
+%%% Manhattan staircase between two intersections, computed with pure
+%%% arithmetic.
 %%%
-%%% Coordinate convention: callers pass `{Lat, Lng}` (the order used
-%%% everywhere else in the sim). OSRM speaks `lon,lat`, so we swap at the
-%%% wire boundary here and nowhere else. The returned polyline is a list of
-%%% `{Lat, Lng}` points, ready to animate a vehicle along.
+%%% Coordinate convention: points are `{X, Y}` in grid units (a cab at
+%%% `{2.4, 3.0}` is 40% along the street from intersection `{2,3}` toward
+%%% `{3,3}`). The fleet brain still calls these tuple slots `lat`/`lng` for
+%%% now; they carry grid coordinates, not geography.
+%%%
+%%% Distances are returned in METRES (grid units scaled by `?UNIT_M` metres
+%%% per block) so the brain's metre-based physics — battery drain per km,
+%%% fare per km, cruise speed — is unchanged.
 %%%
 %%% Lives in parksim_simulator (shared infra) so both the fleet brain and
 %%% any tooling can route.
 -module(route_leg).
 
--export([route/2, osrm_url/0]).
-%% Geometry helpers reused by the fleet brain (simulate_fleet_core).
--export([haversine_m/2, interpolate/3]).
+-export([route/2, dist/2, interpolate/3, grid_n/0, snap/1]).
 
--type point() :: {number(), number()}.   %% {Lat, Lng}
+-type point() :: {number(), number()}.   %% {X, Y} in grid units
 -type leg() :: #{distance_m := float(),
                  duration_s := float(),
                  polyline   := [point()],
-                 source     := osrm | straight}.
+                 source     := grid}.
 -export_type([point/0, leg/0]).
 
-%% City driving speed assumed for the straight-line fallback (~28 km/h).
--define(FALLBACK_SPEED_MPS, 7.8).
-%% Roads are longer than the crow flies; pad the straight-line distance.
--define(DETOUR_FACTOR, 1.3).
-%% Keep the HTTP call short — the sim ticks frequently and has a fallback.
--define(HTTP_TIMEOUT_MS, 1500).
+%% Imaginary city: ?GRID_N x ?GRID_N blocks => intersections 0..?GRID_N.
+-define(GRID_N, 6).
+%% Metres per city block — keeps the brain's km-based physics sensible.
+-define(UNIT_M, 150.0).
+%% Assumed city speed, used only to fill in a leg's duration estimate.
+-define(SPEED_MPS, 7.8).
 
-%% @doc Route From -> To over real roads via OSRM, or straight-line on
-%% failure. Never errors: always returns a usable leg.
+%% @doc The grid dimension (blocks per side); intersections span 0..grid_n().
+-spec grid_n() -> pos_integer().
+grid_n() -> ?GRID_N.
+
+%% @doc Route From -> To across the grid as a Manhattan staircase. Returns
+%% the waypoints AHEAD of the vehicle (the brain walks from its current
+%% position through them) plus the leg distance in metres. Pure; never errors.
 -spec route(point(), point()) -> leg().
 route(From, To) ->
-    case query_osrm(From, To) of
-        {ok, Leg}       -> Leg;
-        {error, _Reason} -> straight_line(From, To)
-    end.
-
-%% @doc The OSRM base URL: OSRM_URL env var, else app env, else localhost.
--spec osrm_url() -> string().
-osrm_url() ->
-    case os:getenv("OSRM_URL") of
-        false -> application:get_env(hecate_parksim, osrm_url, "http://127.0.0.1:5000");
-        ""    -> application:get_env(hecate_parksim, osrm_url, "http://127.0.0.1:5000");
-        Url   -> Url
-    end.
+    Waypoints = staircase(snap(From), snap(To)),
+    DistM = manhattan_m(From, To),
+    #{distance_m => DistM,
+      duration_s => DistM / ?SPEED_MPS,
+      polyline   => Waypoints,
+      source     => grid}.
 
 %%--------------------------------------------------------------------
-%% OSRM
+%% Grid routing
 
-query_osrm({FromLat, FromLng}, {ToLat, ToLng}) ->
-    %% OSRM wants lon,lat;lon,lat. full+geojson gives a road polyline.
-    Coords = io_lib:format("~f,~f;~f,~f", [FromLng, FromLat, ToLng, ToLat]),
-    Url = lists:flatten([osrm_url(),
-                         "/route/v1/driving/", Coords,
-                         "?overview=full&geometries=geojson"]),
-    try httpc:request(get, {Url, []},
-                      [{timeout, ?HTTP_TIMEOUT_MS}, {connect_timeout, ?HTTP_TIMEOUT_MS}],
-                      [{body_format, binary}]) of
-        {ok, {{_, 200, _}, _Headers, Body}} -> parse_osrm(Body);
-        {ok, {{_, Status, _}, _, _}}        -> {error, {http_status, Status}};
-        {error, Reason}                     -> {error, Reason}
-    catch
-        _:Err -> {error, Err}
-    end.
+%% Snap an arbitrary point to its nearest intersection, clamped to the city.
+-spec snap(point()) -> {integer(), integer()}.
+snap({X, Y}) -> {clamp(round(X)), clamp(round(Y))}.
 
-parse_osrm(Body) ->
-    try jsx:decode(Body, [return_maps]) of
-        #{<<"code">> := <<"Ok">>, <<"routes">> := [Route | _]} ->
-            #{<<"distance">> := Dist,
-              <<"duration">> := Dur,
-              <<"geometry">> := #{<<"coordinates">> := Coords}} = Route,
-            Polyline = [{Lat, Lng} || [Lng, Lat] <- Coords],   %% lon,lat -> {lat,lng}
-            {ok, #{distance_m => to_float(Dist),
-                   duration_s => to_float(Dur),
-                   polyline   => Polyline,
-                   source     => osrm}};
-        #{<<"code">> := Code} ->
-            {error, {osrm_code, Code}};
-        _ ->
-            {error, osrm_unexpected_shape}
-    catch
-        _:Err -> {error, {osrm_parse, Err}}
-    end.
+clamp(N) when N < 0 -> 0;
+clamp(N) when N > ?GRID_N -> ?GRID_N;
+clamp(N) -> N.
+
+%% Manhattan staircase of intersections from A (exclusive) to B (inclusive),
+%% one block per step, alternating axis so cabs spread across interior
+%% streets instead of hugging two edges.
+staircase({Ax, Ay}, {Bx, By}) -> step(Ax, Ay, Bx, By, true, []).
+
+step(X, Y, X, Y, _Prefer, Acc) -> lists:reverse(Acc);
+step(X, Y, Bx, By, PreferX, Acc) ->
+    MoveX = case {X =/= Bx, Y =/= By} of
+                {true, true}  -> PreferX;
+                {true, false} -> true;
+                {false, _}    -> false
+            end,
+    {NX, NY} = case MoveX of
+                   true  -> {X + sign(Bx - X), Y};
+                   false -> {X, Y + sign(By - Y)}
+               end,
+    step(NX, NY, Bx, By, not PreferX, [{NX, NY} | Acc]).
+
+sign(D) when D > 0 -> 1;
+sign(D) when D < 0 -> -1;
+sign(_)            -> 0.
 
 %%--------------------------------------------------------------------
-%% Straight-line fallback
+%% Geometry helpers reused by the fleet brain (simulate_fleet_core)
 
-straight_line(From, To) ->
-    Crow = haversine_m(From, To),
-    Dist = Crow * ?DETOUR_FACTOR,
-    #{distance_m => Dist,
-      duration_s => Dist / ?FALLBACK_SPEED_MPS,
-      polyline   => [From, To],
-      source     => straight}.
+%% @doc Distance in METRES between two grid points (euclidean grid distance
+%% scaled by the block size). Replaces the old great-circle `haversine_m/2`.
+-spec dist(point(), point()) -> float().
+dist({X1, Y1}, {X2, Y2}) ->
+    DX = X2 - X1,
+    DY = Y2 - Y1,
+    math:sqrt(DX * DX + DY * DY) * ?UNIT_M.
 
-%% Great-circle distance in metres between two {Lat, Lng} points.
-haversine_m({Lat1, Lng1}, {Lat2, Lng2}) ->
-    R = 6371000.0,
-    P1 = deg2rad(Lat1),
-    P2 = deg2rad(Lat2),
-    DP = deg2rad(Lat2 - Lat1),
-    DL = deg2rad(Lng2 - Lng1),
-    A = math:sin(DP / 2) * math:sin(DP / 2)
-        + math:cos(P1) * math:cos(P2) * math:sin(DL / 2) * math:sin(DL / 2),
-    C = 2 * math:atan2(math:sqrt(A), math:sqrt(1 - A)),
-    R * C.
+%% Manhattan (street-following) distance in metres — the real driven length.
+manhattan_m({X1, Y1}, {X2, Y2}) ->
+    (abs(X2 - X1) + abs(Y2 - Y1)) * ?UNIT_M.
 
-deg2rad(D) -> D * math:pi() / 180.0.
-
-%% @doc The point a fraction `F' (0..1) of the way from A to B. Linear in
-%% lat/lng — accurate enough at city scale for animating a vehicle along a
-%% short polyline segment.
+%% @doc The point a fraction `F` (0..1) of the way from A to B (linear lerp).
 -spec interpolate(point(), point(), float()) -> point().
-interpolate({Lat1, Lng1}, {Lat2, Lng2}, F) ->
-    {Lat1 + (Lat2 - Lat1) * F, Lng1 + (Lng2 - Lng1) * F}.
-
-to_float(N) when is_integer(N) -> float(N);
-to_float(N) when is_float(N)   -> N.
+interpolate({X1, Y1}, {X2, Y2}, F) ->
+    {X1 + (X2 - X1) * F, Y1 + (Y2 - Y1) * F}.

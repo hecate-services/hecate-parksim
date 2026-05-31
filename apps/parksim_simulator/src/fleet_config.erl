@@ -2,10 +2,15 @@
 %%% the service facilities (depots), the four operators, the demand
 %%% hotspots, and the vehicle/economics parameters.
 %%%
-%%% All four operators run in ONE shared city (Leuven). Each node is one
-%%% operator, selected by TENANT_ID (kept as the operator id so the store /
+%%% The city is an imaginary 6x6 checkerboard (see `route_leg'): intersections
+%%% at integer grid coordinates 0..6 on each axis. Depots and hotspots sit on
+%%% intersections. All four operators run in ONE shared grid city. Each node is
+%%% one operator, selected by TENANT_ID (kept as the operator id so the store /
 %%% stream / mesh-topic wiring is unchanged); only the brand name + colour
-%%% differ. Coordinates are real Leuven lat/lng.
+%%% differ.
+%%%
+%%% Coordinates use the `lat'/`lng' record/key slots but carry GRID units, not
+%%% geography (a `lat/lng -> x/y` rename is a pending cleanup).
 -module(fleet_config).
 
 -include_lib("parksim_simulator/include/fleet.hrl").
@@ -39,40 +44,40 @@ operator() ->
     end.
 
 %%--------------------------------------------------------------------
-%% Facilities — three depots across Leuven, each with charging + cleaning;
-%% the centrum depot also does maintenance.
+%% Facilities — three depots on grid intersections, each with charging +
+%% cleaning; the central depot also does maintenance.
 
 -spec facilities() -> [#facility{}].
 facilities() ->
-    [#facility{id = <<"depot-centrum">>,   name = <<"Centrum Depot">>,
-               lat = 50.8810, lng = 4.7005, bays = 6,
+    [#facility{id = <<"depot-centrum">>,   name = <<"Central Depot">>,
+               lat = 3, lng = 3, bays = 6,
                kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]},
-     #facility{id = <<"depot-heverlee">>,  name = <<"Heverlee Depot">>,
-               lat = 50.8616, lng = 4.6921, bays = 5,
+     #facility{id = <<"depot-heverlee">>,  name = <<"Westside Depot">>,
+               lat = 1, lng = 5, bays = 5,
                kinds = [<<"charge">>, <<"clean">>]},
-     #facility{id = <<"depot-kessel-lo">>, name = <<"Kessel-Lo Depot">>,
-               lat = 50.8867, lng = 4.7283, bays = 5,
+     #facility{id = <<"depot-kessel-lo">>, name = <<"Eastside Depot">>,
+               lat = 5, lng = 1, bays = 5,
                kinds = [<<"charge">>, <<"clean">>]}].
 
 %%--------------------------------------------------------------------
-%% Demand hotspots — real Leuven landmarks where rides start/end. Weight
-%% biases how often a hotspot is chosen as a pickup/dropoff.
+%% Demand hotspots — grid intersections where rides start/end. Weight biases
+%% how often a hotspot is chosen as a pickup/dropoff.
 
 -spec hotspots() -> [{binary(), number(), number(), number()}].
 hotspots() ->
-    %% {name, lat, lng, weight}
-    [{<<"Grote Markt">>,        50.8788, 4.7011, 1.0},
-     {<<"Ladeuzeplein">>,       50.8795, 4.7050, 1.0},
-     {<<"Leuven Station">>,     50.8814, 4.7155, 1.5},
-     {<<"Naamsestraat">>,       50.8760, 4.7000, 0.8},
-     {<<"Gasthuisberg">>,       50.8806, 4.6707, 1.2},
-     {<<"Bondgenotenlaan">>,    50.8800, 4.7080, 0.9},
-     {<<"Arenberg Heverlee">>,  50.8636, 4.6770, 0.8},
-     {<<"Kessel-Lo Park">>,     50.8880, 4.7250, 0.7}].
+    %% {name, x, y, weight}
+    [{<<"Plaza">>,       3, 3, 1.0},
+     {<<"North Gate">>,  3, 6, 1.2},
+     {<<"South Gate">>,  3, 0, 1.0},
+     {<<"East Market">>, 6, 3, 1.0},
+     {<<"West Market">>, 0, 3, 1.0},
+     {<<"Grand Station">>, 5, 5, 1.5},
+     {<<"Harbor">>,      1, 1, 0.8},
+     {<<"Greenpark">>,   5, 2, 0.7}].
 
-%% @doc Rough city centre (for default vehicle spawn / fallback).
+%% @doc City centre intersection (for default vehicle spawn / fallback).
 -spec city_centre() -> {number(), number()}.
-city_centre() -> {50.8798, 4.7005}.
+city_centre() -> {3, 3}.
 
 %%--------------------------------------------------------------------
 %% Parameters — vehicle physics + economics. One map, env-overridable later.

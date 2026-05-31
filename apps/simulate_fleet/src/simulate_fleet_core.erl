@@ -175,7 +175,7 @@ walk(Path, Pos, Budget) -> walk(Path, Pos, Budget, 0.0).
 
 walk([], Pos, _Budget, Moved) -> {[], Pos, Moved, true};
 walk([Next | Rest] = Path, Pos, Budget, Moved) ->
-    D = route_leg:haversine_m(Pos, Next),
+    D = route_leg:dist(Pos, Next),
     case D =< Budget of
         true ->
             walk(Rest, Next, Budget - D, Moved + D);
@@ -289,8 +289,8 @@ nearest_free_facility(V, #core{facilities = Facs, bays_free = Free}) ->
             Pos = {V#fveh.lat, V#fveh.lng},
             [Best | _] = lists:sort(
                 fun(A, B) ->
-                    route_leg:haversine_m(Pos, {A#facility.lat, A#facility.lng})
-                        =< route_leg:haversine_m(Pos, {B#facility.lat, B#facility.lng})
+                    route_leg:dist(Pos, {A#facility.lat, A#facility.lng})
+                        =< route_leg:dist(Pos, {B#facility.lat, B#facility.lng})
                 end, Avail),
             Best
     end.
