@@ -1,8 +1,22 @@
 # Plan: Reframe Parksim as a Robotaxi Fleet Simulator
 
-**Status:** Active — design locked, Phase 1 not yet started
+**Status:** Built + live. Routing/map simplified — see amendment below.
 **Date:** 2026-05-30
 **Repo:** `codeberg.org/hecate-services/hecate-parksim`
+
+> **Amendment — 2026-05-31: imaginary grid city (OSRM + Leaflet removed).**
+> The original "real Leuven streets via per-node OSRM sidecar" approach
+> (decisions #5–#7, §6.0/6.2, §6.7/6.8) was **superseded**. The demo city is
+> now an imaginary **6×6 checkerboard** (intersections 0..6); routing is a pure
+> in-process Manhattan staircase (`route_leg`), with **no OSRM container, no map
+> data, no HTTP**. The realm map is **inline SVG** (no Leaflet, no CARTO tiles)
+> — which also removed the external-CDN failure mode that froze the map. Net:
+> a whole sidecar, a multi-GB graph, and two CDN dependencies deleted; the
+> federation story (4 operators, one city, live mesh telemetry) is unchanged.
+> Sections below are kept for the historical record; where they say OSRM /
+> real roads / Leaflet, read "grid router / SVG". The operator TENANT_IDs
+> (`leuven/brussels/ghent/antwerp`) and the mesh station topology are NOT the
+> cab city and did NOT change.
 
 ---
 
@@ -10,9 +24,9 @@
 
 Parksim stops being a passive parking counter (anonymous cars arrive, pay,
 leave) and becomes a living **robotaxi fleet simulator**: ~48 self-driving
-vehicles, owned by **4 competing operators**, cruising one shared city
-(Leuven), picking up passengers, collecting fares, draining battery, and
-docking into facilities to **charge / clean / maintain** — all rendered on
+vehicles, owned by **4 competing operators**, cruising one shared imaginary
+**6×6 grid city**, picking up passengers, collecting fares, draining battery,
+and docking into facilities to **charge / clean / maintain** — all rendered on
 a live map the realm assembles from the 4 operators' mesh feeds.
 
 ---
@@ -25,9 +39,9 @@ a live map the realm assembles from the 4 operators' mesh feeds.
 | 2 | **4 operators, one city.** Each operator = one beam node = one mesh publisher, owns ~12 vehicles + its depot(s). `company_id` = `TENANT_ID`. | Clean ownership boundary per node; "4 companies share one city" reads as a real market; organic resilience story (node down → that company greys out). |
 | 3 | **Fleet ~48 total, 12/company.** | User target ~50, divided cleanly across 4 nodes. |
 | 4 | **Position is telemetry, NOT a domain event.** Milestones are events. | 50 vehicles × position/sec would be a write storm into ReckonDB (the CPU-pin shape). Milestones are sparse (~1 event/sec fleet-wide). |
-| 5 | **OSRM road routing from the start**, **one OSRM container per node** (sidecar). Each operator's beam runs its own `osrm-routed` on `localhost`; the sim talks to `127.0.0.1`. Vehicles follow real Leuven streets day one. | User chose roads-from-start + per-node. Per-node is operationally simpler: no cross-node LAN dependency, identical deploy unit on every node, and node-down takes its own router with its fleet (clean resilience story — no shared SPOF). Cost: 4× the same read-only graph in RAM (~1–2 GB each; beams have 16–32 GB, fine). A **straight-line fallback** stays in the router client regardless. |
-| 6 | **Transmodel/NeTEx/GTFS are NOT for routing** (they model fixed-line public transit). GTFS stop coords *may* seed **demand hotspots** (where ride requests originate) — open-data flourish, demand side only. | Robotaxi = on-demand point-to-point road routing, which is OSM + OSRM, not a transit standard. |
-| 7 | **Build order: routing infra (OSRM) first, then the sim against it.** | Roads from day one; the sim's kinematics are written against real polylines, not retrofitted. |
+| 5 | ~~OSRM road routing, one container per node~~ → **REVERSED 2026-05-31: imaginary 6×6 grid, in-process Manhattan router.** Cabs drive a `?GRID_N×?GRID_N` checkerboard (intersections 0..6); `route_leg` computes a staircase path with pure arithmetic — no sidecar, no graph, no HTTP. | The OSRM sidecar was a multi-GB graph + a whole container per Celeron beam, and it bought realism the demo doesn't need (the point is mesh federation, not cartography). A grid is self-contained, deterministic, and lighter; it also let the realm map drop Leaflet/CARTO (the CDN that had been freezing the map). |
+| 6 | **Demand hotspots** are a handful of named grid intersections (`fleet_config:hotspots/0`) with weights. (Originally floated as GTFS-seeded; not needed for a synthetic grid.) | Robotaxi = on-demand point-to-point; on a grid the origins/destinations are just intersections. |
+| 7 | ~~Routing infra first~~ → the sim's kinematics run against the grid router directly; physics (battery/fare per km) unchanged via a metres-per-block scale (`?UNIT_M`). | No infra to stand up first; one block = 150 m keeps the km-based economics sensible. |
 
 ---
 
@@ -116,45 +130,33 @@ telemetry mesh fact. That is the real new work.
 
 ## 6. Build order
 
-Roads from the start, so step 0 is the routing infra; everything else is
-written against real polylines.
+> Routing is in-process, so there is no step-0 infra — the sim runs against
+> the grid router directly. (Originally this section opened with an OSRM
+> sidecar; that was removed 2026-05-31.)
 
-### 6.0 Routing infra — per-node OSRM sidecar (FIRST), option A
-- **Option A (no new repo):** the OSRM unit is a Quadlet `.container` /
-  compose file + a `prepare-belgium-graph.sh` preprocessing script living in
-  the **deploy/infra config** (`macula-demo/infrastructure/`, beside the
-  parksim compose), pinned to the upstream
-  `ghcr.io/project-osrm/osrm-backend` image. OSRM is a consumed dependency
-  (like PostgreSQL/reckon_db), NOT a Hecate service — no `hecate_om`, no mesh,
-  no wrapper repo.
-- **Preprocess once, distribute the prepared graph.** Run
-  `osrm-extract → osrm-partition → osrm-customize` (MLD pipeline) **once** on
-  a capable box (HQ/dev) over a Belgium Geofabrik `.osm.pbf`. Ship the
-  prepared `.osrm.*` files to each node's data dir. Each node then runs only
-  `osrm-routed` (cheap at query time) — avoids 4× heavy preprocessing on the
-  weak J4105 Celerons.
-- **Per-node sidecar:** each beam runs its own `osrm-routed` bound to
-  `127.0.0.1:5000`. The sim queries `GET /route/v1/driving/{lon,lat};{lon,lat}`
-  → `{geometry (polyline), distance_m, duration_s}` on localhost — no LAN hop,
-  no shared SPOF.
-- Sovereign stack: OSM map commons + OSRM self-hosted, no Big Tech, no API
-  keys — on "We are Europe".
-- **GTFS demand seeding** (optional flourish): De Lijn + SNCB stop
-  coordinates as ride-request hotspots — real open data, demand side only.
+### 6.0 Routing — in-process grid router (`route_leg`)
+- The city is a `?GRID_N×?GRID_N` checkerboard (default 6×6): intersections at
+  integer grid coordinates `0..6`, streets along every lattice line. No map
+  data, no `.osm.pbf`, no preprocessing, no sidecar container.
+- `route_leg:route(From, To)` returns the **Manhattan staircase** of
+  intersections between two points (alternating axis so cabs spread across
+  interior streets) plus the leg distance in metres. `dist/2` is euclidean
+  grid distance × `?UNIT_M` (150 m/block); `interpolate/3` is a linear lerp.
+  All pure arithmetic.
+- **Sovereign by construction:** no map data, no external service, no API keys
+  — strictly more "We are Europe" than the OSRM/OSM route ever was.
+- **Demand hotspots:** named grid intersections with weights
+  (`fleet_config:hotspots/0`).
 
 ### 6.1 Domain — `guide_vehicle_lifecycle`
 - 8 desks (§4), each: command `_v1`, event `_v1`, `maybe_*` handler, dispatch wrapper.
 - `vehicle_aggregate` + `vehicle_state` (bit-flag status, battery %, position, current trip, assigned bay).
 - Consistency: **eventual** (sequential dispatches in one process read their own writes — the lesson from the parking revert; do NOT use strong).
 
-### 6.2 Router client — `route_leg`
-- Thin OSRM client: `route_leg(From, To)` → `{Polyline, DistanceM, DurationS}`,
-  hitting the **local** sidecar (`127.0.0.1:5000`, env-configurable).
-- **Graceful fallback:** OSRM unreachable → straight-line interpolation
-  (×1.3 distance fudge for battery). The sim runs with or without routing
-  infra; a router outage degrades visuals, never blocks the fleet.
-- Queried a few times per trip (~40 calls/min per node at peak — trivial for
-  a localhost OSRM).
+### 6.2 Router — `route_leg` (pure, in-process)
+- `route_leg:route(From, To)` → `#{polyline, distance_m, duration_s, source}`
+  where the polyline is the grid staircase (waypoints ahead). No HTTP, no
+  fallback path needed — it cannot fail. See §6.0.
 
 ### 6.3 Simulator — `simulate_fleet` (the brain)
 - Per-operator (reads `company_id` = `TENANT_ID`). Owns ~12 vehicles.
@@ -165,7 +167,7 @@ written against real polylines.
 - **Battery 0 mid-leg** → `deplete_battery` (stranded); simple rescue after a delay → tow to facility → service → release.
 
 ### 6.4 Config — `fleet_config`
-- City polygon (Leuven bounds) + a handful of **facilities** (depots) with bay counts and service kinds, at real Leuven coordinates.
+- A handful of **facilities** (depots) with bay counts and service kinds, on grid intersections (Central `{3,3}`, Westside `{1,5}`, Eastside `{5,1}`).
 - **4 operators** with names + colors + home depot + roster size.
 - Demand hotspots (hand-placed first; GTFS-seeded optionally).
 - Vehicle/economics params: cruise speed, battery capacity, drain rate, fare model (base + per-km + per-min), service durations.
@@ -179,16 +181,14 @@ written against real polylines.
 - `emit_fleet_telemetry` (1–2 s): array of `{vehicle_id, lat, lng, heading, battery, phase}` → `fleet/<company>/telemetry`. **Term in, CBOR on the wire — never JSON-encode the payload.**
 - Optional: publish the active polyline for a clicked vehicle so the realm can draw its live route.
 
-### 6.7 Realm consumer + map (`macula-realm/demo`)
+### 6.7 Realm consumer + map (`macula-realm` ClankerCab slice)
 - Subscribe `fleet/+/summary` and `fleet/+/telemetry` for the 4 operators.
-- **Leaflet map** of Leuven (real tiles): ~48 dots moving along streets, colored **by company**, glyph/shade by phase (cruising / on-trip / returning / charging / stranded). Facilities as buildings with bay-occupancy. Live counters: trips, gross fares, energy kWh, net, charging, stranded — per company + city total.
-- Reuses the existing TopologyMap hook know-how.
+- **Inline SVG map** of the 6×6 grid (`ClankerCabMap` hook): streets + depots drawn once, ~48 cab markers colored **by company**, glyph by phase, gliding along streets via a CSS transform transition. **Zero external runtime deps** — no Leaflet, no map tiles. Live counters per company + city total.
 
 ### 6.8 Deploy
-- Same path: docker-compose on beam00–03, one operator per node via `TENANT_ID` (= company). Reset data once on cutover (schema change).
-- Each node also runs its **OSRM sidecar** (compose service beside parksim, `127.0.0.1:5000`), with the prepared Belgium graph in a bind-mounted data dir. Map `company_id` → node: beam00..03 = the 4 operators.
+- Same path: docker-compose on beam00–03, one operator per node via `TENANT_ID` (= company). No sidecars — parksim is the only service (the OSRM container was removed; `deploy-parksim.sh` uses `--remove-orphans` to tear down old ones). Map `company_id` → node: beam00..03 = the 4 operators.
 
-### Done = 4 companies' cabs visibly driving Leuven's real streets on the realm map, taking fares, charging at depots, occasional strandings; node-down greys a company out.
+### Done = 4 companies' cabs visibly driving the grid city on the realm map, taking fares, charging at depots, occasional strandings; node-down greys a company out.
 
 ---
 
@@ -201,8 +201,8 @@ written against real polylines.
   the map; recovery resumes it. (Replaces the deleted scripted war-scenario.)
 - **Springboard to the other workload classes:** on-board LLM passenger Q&A
   (LLM serving); federated demand prediction across operators (federated AI).
-- **Sovereign stack:** OSM + OSRM, no Big Tech, no API keys — on "We are
-  Europe."
+- **Sovereign stack:** self-contained grid + inline SVG, no map data, no
+  external service, no API keys — on "We are Europe."
 
 ---
 
@@ -213,8 +213,9 @@ written against real polylines.
   prior dashboard task).
 - Cross-operator vehicle handoff as a later "wow" (a cab crossing into
   another node's coverage).
-- Pick the box that does the one-time graph preprocessing (HQ/dev), then
-  distribute the prepared `.osrm.*` files to each node.
+- **`lat/lng → x/y` rename:** grid coordinates still flow through the
+  `lat`/`lng` field slots across the event spine. An honest rename to `x`/`y`
+  is the pending cleanup (deferred to keep the city change off the event spine).
 - **Stale README:** current `README.md` claims parksim is a *client*
   simulator (fires RPCs, owns no state). The code actually owns the domain
   (aggregates + stores). Rewrite the README for the robotaxi reframe.
