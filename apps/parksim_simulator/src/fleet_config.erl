@@ -94,24 +94,25 @@ city_centre() -> {3, 3}.
 params() ->
     #{tick_ms              => 1000,    %% wall ms per tick
       cruise_speed_mps     => 11.0,    %% ~40 km/h
-      %% Tuned for a watchable demo (short grid trips, time_scale 3): clean
-      %% triggers in ~3-4 min, maintenance ~5 min, charge ~10-12 min. Dial down
-      %% the rates for a more realistic, sparser depot cadence.
-      battery_drain_per_km => 3.0,     %% %/km -> ~33 km range (demo-fast)
-      return_threshold_pct => 30,      %% return to charge below this %
+      %% Tuned for a watchable demo (short grid trips, time_scale 3, busier
+      %% fleet): a steady trickle of cabs cycles through the hubs — clean in
+      %% ~3 min, maintenance ~5 min, charge ~8 min, each a short visible stay.
+      %% Dial the rates down (and service_secs up) for a realistic, sparse cadence.
+      battery_drain_per_km => 4.0,     %% %/km -> ~25 km range (demo-fast)
+      return_threshold_pct => 32,      %% return to charge below this %
       clean_threshold_pct  => 40,      %% return to clean below this %
-      clean_per_trip       => 12,      %% cleanliness % lost per completed trip
-      maint_interval_km    => 10,      %% return for maintenance every N km
+      clean_per_trip       => 15,      %% cleanliness % lost per completed trip
+      maint_interval_km    => 8,       %% return for maintenance every N km
       min_dispatch_pct     => 15,      %% refuse a fare below this (matches aggregate)
-      service_secs         => #{<<"charge">> => 1800,   %% sim seconds
-                                <<"clean">>  => 600,
-                                <<"maintain">> => 1200},
+      service_secs         => #{<<"charge">> => 120,    %% sim seconds (short, so
+                                <<"clean">>  => 45,     %% bays cycle visibly —
+                                <<"maintain">> => 75},  %% /time_scale = wall secs
       tow_secs             => 900,     %% sim seconds stranded before tow lands
       fare_base_cents      => 250,
       fare_per_km_cents    => 120,
       fare_per_min_cents   => 25,
       %% demand: ride requests/min across the fleet at peak (per operator).
-      peak_requests_per_min => 6.0,
+      peak_requests_per_min => 14.0,
       request_ttl_secs      => 300}.   %% unassigned requests expire
 
 %%--------------------------------------------------------------------
