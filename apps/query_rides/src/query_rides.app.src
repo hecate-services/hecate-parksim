@@ -1,0 +1,17 @@
+{application, query_rides, [
+    {description, "HTTP query API for the rides read model"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {query_rides_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        cowboy,
+        jsx,
+        esqlite,
+        project_rides
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]}
+]}.

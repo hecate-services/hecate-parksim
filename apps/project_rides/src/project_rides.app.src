@@ -1,0 +1,19 @@
+{application, project_rides, [
+    {description, "Projects ride-lifecycle events into a SQLite rides read model"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {project_rides_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        esqlite,
+        reckon_db,
+        evoq,
+        reckon_evoq,
+        hecate_om,
+        guide_ride_lifecycle
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]}
+]}.
