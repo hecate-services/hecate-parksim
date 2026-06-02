@@ -16,7 +16,7 @@
 
 -include_lib("parksim_simulator/include/fleet.hrl").
 
--export([new/3, tick/5, vehicles/1, snapshot/1, riders/1]).
+-export([new/3, tick/5, vehicles/1, snapshot/1, rides/1]).
 %% Milestone callbacks — exported so advance/3 can dispatch via ?MODULE:F.
 -export([on_reach_pickup/2, on_reach_dropoff/2, on_reach_facility/2]).
 
@@ -78,17 +78,35 @@ tick(#core{} = Core0, SimUnix, TickSimSecs, NewRequests, RouteFun) ->
     %% Riders still waiting from prior ticks carry over (minus the ones who
     %% gave up after request_ttl_secs); new arrivals join the back of the queue.
     Ttl = maps:get(request_ttl_secs, Core0#core.params, 300),
-    Waiting = [R || R <- Core0#core.pending,
-                    SimUnix - R#ride_request.created < Ttl],
+    {Waiting, Expired} = lists:partition(
+        fun(R) -> SimUnix - R#ride_request.created < Ttl end, Core0#core.pending),
     Pool = Waiting ++ NewRequests,
+    Company = (Core0#core.operator)#operator.id,
+    %% Ride milestones outside the per-vehicle fold: a ride_requested for each
+    %% new arrival, a ride_expired for each give-up. Seeded reversed so they
+    %% dispatch BEFORE this tick's assign/start/complete (the list is reversed
+    %% on the way out), keeping the ride aggregate's preconditions satisfied.
+    Seed = [{request_ride, request_payload(R, Company)} || R <- NewRequests]
+        ++ [{expire_ride, #{ride_id => R#ride_request.id}} || R <- Expired],
     Ctx0 = #{core => Core0, requests => Pool, sim => SimUnix,
              tick_sim_secs => TickSimSecs,
-             route => RouteFun, effects => []},
+             route => RouteFun, effects => lists:reverse(Seed)},
     Ids = maps:keys(Core0#core.vehicles),
     Ctx1 = lists:foldl(fun(Id, Ctx) -> step(Id, Ctx) end, Ctx0, Ids),
     #{core := Core1, requests := Leftover, effects := Effects} = Ctx1,
     Core2 = Core1#core{pending = Leftover},
     {Core2, length(Effects), lists:reverse(Effects)}.
+
+%% The ride_requested command payload for a fresh request.
+request_payload(R, Company) ->
+    #{ride_id             => R#ride_request.id,
+      company_id          => Company,
+      pickup_x            => x_of(R#ride_request.pickup),
+      pickup_y            => y_of(R#ride_request.pickup),
+      dropoff_x           => x_of(R#ride_request.dropoff),
+      dropoff_y           => y_of(R#ride_request.dropoff),
+      party_size          => R#ride_request.party_size,
+      fare_estimate_cents => R#ride_request.fare_estimate_cents}.
 
 %%--------------------------------------------------------------------
 %% Per-vehicle step
@@ -123,9 +141,13 @@ try_take_fare(V, Ctx) ->
             Route = maps:get(route, Ctx),
             {Path, _D} = Route({V#fveh.x, V#fveh.y}, Req#ride_request.pickup),
             V1 = V#fveh{phase = dispatched, leg = to_pickup, path = Path,
-                        trip_id = trip_id(Req), pickup = Req#ride_request.pickup,
+                        trip_id = trip_id(Req), ride_id = Req#ride_request.id,
+                        pickup = Req#ride_request.pickup,
                         dropoff = Req#ride_request.dropoff, trip_m = 0.0},
-            Ctx1 = Ctx#{requests => Rest},
+            Ctx1 = add_effect({assign_ride,
+                               #{ride_id => Req#ride_request.id,
+                                 vehicle_id => V1#fveh.id}},
+                              Ctx#{requests => Rest}),
             emit(V1, {dispatch_vehicle,
                       #{vehicle_id => V1#fveh.id, trip_id => V1#fveh.trip_id,
                         pickup_x => x_of(V1#fveh.pickup),
@@ -213,22 +235,26 @@ on_reach_pickup(V, Ctx) ->
     Route = maps:get(route, Ctx),
     {Path, _D} = Route(V#fveh.pickup, V#fveh.dropoff),
     V1 = V#fveh{phase = on_trip, leg = to_dropoff, path = Path, trip_m = 0.0},
+    Ctx1 = add_effect({start_ride, #{ride_id => V#fveh.ride_id}}, Ctx),
     emit(V1, {pick_up_passenger,
               #{vehicle_id => V1#fveh.id,
                 x => V1#fveh.x, y => V1#fveh.y}},
-         put_veh(V1, Ctx)).
+         put_veh(V1, Ctx1)).
 
 on_reach_dropoff(V, Ctx) ->
     #{core := Core} = Ctx,
     Fare = fare_cents(V#fveh.trip_m, Core#core.params),
     Dirt = maps:get(clean_per_trip, Core#core.params, 0),
+    Ctx1 = add_effect({complete_ride,
+                       #{ride_id => V#fveh.ride_id, fare_cents => Fare}}, Ctx),
     V1 = V#fveh{phase = cruising, leg = none, path = [],
                 cleanliness_pct = max(0.0, V#fveh.cleanliness_pct - Dirt),
-                trip_id = undefined, pickup = undefined, dropoff = undefined},
+                trip_id = undefined, ride_id = undefined,
+                pickup = undefined, dropoff = undefined},
     emit(V1, {drop_off_passenger,
               #{vehicle_id => V1#fveh.id, fare_cents => Fare,
                 x => V1#fveh.x, y => V1#fveh.y}},
-         put_veh(V1, Ctx)).
+         put_veh(V1, Ctx1)).
 
 on_reach_facility(V, Ctx) ->
     #{core := Core, sim := SimUnix} = Ctx,
@@ -365,12 +391,17 @@ snapshot(#core{vehicles = V}) ->
        cleanliness_pct => round1(F#fveh.cleanliness_pct)}
      || F <- maps:values(V)].
 
-%% @doc Waiting riders (unassigned ride requests) at their pickup points.
--spec riders(t()) -> [map()].
-riders(#core{pending = P}) ->
-    [#{id => R#ride_request.id,
-       x => x_of(R#ride_request.pickup),
-       y => y_of(R#ride_request.pickup)}
+%% @doc Waiting rides (unassigned requests) at their pickup points, with the
+%% destination, party size, and fare estimate.
+-spec rides(t()) -> [map()].
+rides(#core{pending = P}) ->
+    [#{id                  => R#ride_request.id,
+       x                   => x_of(R#ride_request.pickup),
+       y                   => y_of(R#ride_request.pickup),
+       dropoff_x           => x_of(R#ride_request.dropoff),
+       dropoff_y           => y_of(R#ride_request.dropoff),
+       party_size          => R#ride_request.party_size,
+       fare_estimate_cents => R#ride_request.fare_estimate_cents}
      || R <- P].
 
 %%--------------------------------------------------------------------

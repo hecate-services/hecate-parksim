@@ -16,7 +16,7 @@
 
 -include_lib("parksim_simulator/include/fleet.hrl").
 
--export([start_link/0, snapshot/0, riders/0]).
+-export([start_link/0, snapshot/0, rides/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
@@ -36,10 +36,10 @@ start_link() ->
 snapshot() ->
     gen_server:call(?MODULE, snapshot).
 
-%% @doc Waiting riders (unassigned requests) at their pickup points.
--spec riders() -> [map()].
-riders() ->
-    gen_server:call(?MODULE, riders).
+%% @doc Waiting rides (unassigned requests) at their pickup points.
+-spec rides() -> [map()].
+rides() ->
+    gen_server:call(?MODULE, rides).
 
 %%--------------------------------------------------------------------
 
@@ -58,8 +58,8 @@ init([]) ->
 
 handle_call(snapshot, _From, #state{core = Core} = S) ->
     {reply, simulate_fleet_core:snapshot(Core), S};
-handle_call(riders, _From, #state{core = Core} = S) ->
-    {reply, simulate_fleet_core:riders(Core), S};
+handle_call(rides, _From, #state{core = Core} = S) ->
+    {reply, simulate_fleet_core:rides(Core), S};
 handle_call(_Req, _From, S) ->
     {reply, ok, S}.
 
@@ -80,8 +80,7 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 do_tick(#state{core = Core0, params = Params, rng = Rng0, last_sim = Last} = S) ->
     SimUnix = simulate_clock:now_unix(),
     TickSimSecs = max(1, SimUnix - Last),
-    Peak = maps:get(peak_requests_per_min, Params, 6.0),
-    {Reqs, Rng1} = simulate_demand:requests(SimUnix, TickSimSecs, Peak, Rng0),
+    {Reqs, Rng1} = simulate_demand:requests(SimUnix, TickSimSecs, Params, Rng0),
     Route = fun(From, To) ->
                 Leg = route_leg:route(From, To),
                 {maps:get(polyline, Leg), maps:get(distance_m, Leg)}
@@ -107,4 +106,9 @@ handler_for(return_vehicle)      -> maybe_return_vehicle;
 handler_for(dock_at_facility)    -> maybe_dock_at_facility;
 handler_for(service_vehicle)     -> maybe_service_vehicle;
 handler_for(release_vehicle)     -> maybe_release_vehicle;
-handler_for(deplete_battery)     -> maybe_deplete_battery.
+handler_for(deplete_battery)     -> maybe_deplete_battery;
+handler_for(request_ride)        -> maybe_request_ride;
+handler_for(assign_ride)         -> maybe_assign_ride;
+handler_for(start_ride)          -> maybe_start_ride;
+handler_for(complete_ride)       -> maybe_complete_ride;
+handler_for(expire_ride)         -> maybe_expire_ride.

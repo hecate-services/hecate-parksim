@@ -22,9 +22,10 @@
 %% @doc Requests arising in a tick of `TickSimSecs' simulated seconds at
 %% `SimUnix', given the operator's `PeakPerMin' peak rate. Returns the new
 %% requests (with ids derived from SimUnix + index) and the advanced rng.
--spec requests(integer(), number(), number(), rand:state()) ->
+-spec requests(integer(), number(), map(), rand:state()) ->
     {[#ride_request{}], rand:state()}.
-requests(SimUnix, TickSimSecs, PeakPerMin, Rng0) ->
+requests(SimUnix, TickSimSecs, Params, Rng0) ->
+    PeakPerMin = maps:get(peak_requests_per_min, Params, 6.0),
     Lambda = lambda_at(PeakPerMin, SimUnix),           %% requests/min now
     Mean   = Lambda * (TickSimSecs / 60.0),            %% expected this tick
     {N, Rng1} = poisson(Mean, Rng0),
@@ -32,13 +33,33 @@ requests(SimUnix, TickSimSecs, PeakPerMin, Rng0) ->
         fun(I, {Acc, R}) ->
             {Pickup, R1}  = sample_hotspot(R),
             {Dropoff, R2} = sample_hotspot(R1),
+            {Party, R3}   = sample_party(R2),
             Req = #ride_request{
-                id      = req_id(SimUnix, I),
-                pickup  = Pickup,
-                dropoff = Dropoff,
-                created = SimUnix},
-            {[Req | Acc], R2}
+                id                  = req_id(SimUnix, I),
+                pickup              = Pickup,
+                dropoff             = Dropoff,
+                party_size          = Party,
+                fare_estimate_cents = estimate_fare(Pickup, Dropoff, Params),
+                created             = SimUnix},
+            {[Req | Acc], R3}
         end, {[], Rng1}, lists:seq(1, N)).
+
+%% Party size: mostly singles/pairs, the odd group of 3-4.
+sample_party(Rng0) ->
+    {U, Rng1} = rand:uniform_s(Rng0),
+    {party_for(U), Rng1}.
+
+party_for(U) when U < 0.5  -> 1;
+party_for(U) when U < 0.8  -> 2;
+party_for(U) when U < 0.95 -> 3;
+party_for(_)               -> 4.
+
+%% Up-front fare estimate from the straight grid distance + the fare rates.
+estimate_fare(Pickup, Dropoff, Params) ->
+    Km    = route_leg:dist(Pickup, Dropoff) / 1000.0,
+    Base  = maps:get(fare_base_cents, Params, 250),
+    PerKm = maps:get(fare_per_km_cents, Params, 120),
+    round(Base + Km * PerKm).
 
 %%--------------------------------------------------------------------
 %% Intensity (bimodal commuter curve)

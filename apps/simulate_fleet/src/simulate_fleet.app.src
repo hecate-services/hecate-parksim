@@ -9,7 +9,8 @@
         crypto,
         parksim_simulator,
         simulate_clock,
-        guide_vehicle_lifecycle
+        guide_vehicle_lifecycle,
+        guide_ride_lifecycle
     ]},
     {env, []},
     {modules, []},

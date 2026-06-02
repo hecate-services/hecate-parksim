@@ -20,12 +20,15 @@
     fleet_size :: pos_integer()
 }).
 
-%%% A pending ride request the fleet brain may assign to an idle vehicle.
+%%% A pending ride (in its "requested" state) the fleet brain may assign to an
+%%% idle vehicle. A ride is a transaction: source, destination, party, fare.
 -record(ride_request, {
-    id      :: binary(),
-    pickup  :: {number(), number()},   %% {X, Y}
-    dropoff :: {number(), number()},
-    created :: integer()                %% sim unix seconds
+    id                  :: binary(),
+    pickup              :: {number(), number()},   %% {X, Y}
+    dropoff             :: {number(), number()},
+    party_size = 1      :: pos_integer(),
+    fare_estimate_cents = 0 :: non_neg_integer(),
+    created             :: integer()                %% sim unix seconds
 }).
 
 %%% In-memory kinematic state of one vehicle in the fleet brain. This is the
@@ -46,6 +49,7 @@
     leg  = none :: none | to_pickup | to_dropoff | to_facility,
 
     trip_id      :: binary() | undefined,
+    ride_id      :: binary() | undefined,   %% the ride aggregate id being served
     pickup       :: {number(), number()} | undefined,
     dropoff      :: {number(), number()} | undefined,
     trip_m = 0.0 :: float(),     %% metres driven on the current trip (for fare)

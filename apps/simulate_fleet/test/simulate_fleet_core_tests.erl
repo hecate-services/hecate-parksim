@@ -30,15 +30,15 @@ full_fare_test() ->
     Req = #ride_request{id = <<"r1">>, pickup = {50.879, 4.701},
                         dropoff = {50.876, 4.700}, created = 0},
     {C1, _, E1} = simulate_fleet_core:tick(C0, 43200, 1000.0, [Req], fun route/2),
-    ?assertEqual([dispatch_vehicle], cmds(E1)),
+    ?assertEqual([request_ride, assign_ride, dispatch_vehicle], cmds(E1)),
     ?assertEqual(dispatched, phase(C1)),
 
     {C2, _, E2} = simulate_fleet_core:tick(C1, 43260, 1000.0, [], fun route/2),
-    ?assertEqual([pick_up_passenger], cmds(E2)),
+    ?assertEqual([start_ride, pick_up_passenger], cmds(E2)),
     ?assertEqual(on_trip, phase(C2)),
 
     {C3, _, E3} = simulate_fleet_core:tick(C2, 43320, 1000.0, [], fun route/2),
-    ?assertEqual([drop_off_passenger], cmds(E3)),
+    ?assertEqual([complete_ride, drop_off_passenger], cmds(E3)),
     ?assertEqual(cruising, phase(C3)).
 
 %% Forced return -> dock+service -> release restores a full charge.
@@ -73,6 +73,7 @@ depletion_test() ->
 %% Demand follows a day/night curve: peak hour >> small hours.
 demand_curve_test() ->
     Rng = rand:seed_s(exsss, {7,7,7}),
-    {Peak, _}  = simulate_demand:requests(8 * 3600 + 1800, 3600, 6.0, Rng),
-    {Night, _} = simulate_demand:requests(3 * 3600, 3600, 6.0, Rng),
+    P = fleet_config:params(),
+    {Peak, _}  = simulate_demand:requests(8 * 3600 + 1800, 3600, P, Rng),
+    {Night, _} = simulate_demand:requests(3 * 3600, 3600, P, Rng),
     ?assert(length(Peak) > length(Night) * 3).
