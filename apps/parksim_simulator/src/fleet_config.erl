@@ -94,11 +94,14 @@ city_centre() -> {3, 3}.
 params() ->
     #{tick_ms              => 1000,    %% wall ms per tick
       cruise_speed_mps     => 11.0,    %% ~40 km/h
-      battery_drain_per_km => 1.0,     %% %/km -> ~100 km full range
-      return_threshold_pct => 22,      %% return to charge below this %
-      clean_threshold_pct  => 35,      %% return to clean below this %
-      clean_per_trip       => 9,       %% cleanliness % lost per completed trip
-      maint_interval_km    => 18,      %% return for maintenance every N km
+      %% Tuned for a watchable demo (short grid trips, time_scale 3): clean
+      %% triggers in ~3-4 min, maintenance ~5 min, charge ~10-12 min. Dial down
+      %% the rates for a more realistic, sparser depot cadence.
+      battery_drain_per_km => 3.0,     %% %/km -> ~33 km range (demo-fast)
+      return_threshold_pct => 30,      %% return to charge below this %
+      clean_threshold_pct  => 40,      %% return to clean below this %
+      clean_per_trip       => 12,      %% cleanliness % lost per completed trip
+      maint_interval_km    => 10,      %% return for maintenance every N km
       min_dispatch_pct     => 15,      %% refuse a fare below this (matches aggregate)
       service_secs         => #{<<"charge">> => 1800,   %% sim seconds
                                 <<"clean">>  => 600,
