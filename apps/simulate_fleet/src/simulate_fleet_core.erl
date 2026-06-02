@@ -131,9 +131,9 @@ try_take_fare(V, Ctx) ->
 
 begin_return(V, Ctx) ->
     #{core := Core} = Ctx,
-    case nearest_free_facility(V, Core) of
+    case home_facility(Core) of
         none ->
-            put_veh(V, Ctx);   %% no free bay anywhere — wait, retry next tick
+            put_veh(V, Ctx);   %% home bay full — wait, retry next tick
         #facility{id = FacId} = Fac ->
             Route = maps:get(route, Ctx),
             {Path, _D} = Route({V#fveh.x, V#fveh.y},
@@ -283,7 +283,7 @@ maybe_tow(V, Ctx) ->
     case is_integer(V#fveh.tow_until) andalso SimUnix >= V#fveh.tow_until of
         false -> put_veh(V, Ctx);
         true  ->
-            case nearest_free_facility(V, Core) of
+            case home_facility(Core) of
                 none -> put_veh(V, Ctx);
                 #facility{id = FacId} = Fac ->
                     Route = maps:get(route, Ctx),
@@ -311,18 +311,16 @@ deplete(V, Ctx) ->
 %%--------------------------------------------------------------------
 %% Bays + facility selection
 
-nearest_free_facility(V, #core{facilities = Facs, bays_free = Free}) ->
-    Avail = [F || F <- Facs, maps:get(F#facility.id, Free, 0) > 0],
-    case Avail of
-        [] -> none;
-        _  ->
-            Pos = {V#fveh.x, V#fveh.y},
-            [Best | _] = lists:sort(
-                fun(A, B) ->
-                    route_leg:dist(Pos, {A#facility.x, A#facility.y})
-                        =< route_leg:dist(Pos, {B#facility.x, B#facility.y})
-                end, Avail),
-            Best
+%% Each operator returns its cabs to ITS OWN hub (operator.home), not the
+%% nearest — every operator runs a separate sim with its own bay accounting,
+%% so nearest-routing let all four operators converge on one hub and overcommit
+%% its 4 bays. Home-routing keeps each hub single-operator and capped at 4.
+%% Returns the home facility if it has a free bay, else `none` (cab waits).
+home_facility(#core{operator = Op, facilities = Facs, bays_free = Free}) ->
+    HomeId = Op#operator.home,
+    case maps:get(HomeId, Free, 0) > 0 of
+        true  -> facility(HomeId, Facs);
+        false -> none
     end.
 
 take_bay(#core{bays_free = Free} = Core, FacId) ->
