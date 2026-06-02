@@ -13,7 +13,7 @@ route(_From, To) -> {[To], 100.0}.
 
 op() ->
     #operator{id = <<"test">>, name = <<"Test">>, color = <<"#fff">>,
-              home = <<"depot-centrum">>, fleet_size = 1}.
+              home = <<"facility-leuven">>, fleet_size = 1}.
 
 cmds(Effects) -> [C || {C, _} <- Effects].
 

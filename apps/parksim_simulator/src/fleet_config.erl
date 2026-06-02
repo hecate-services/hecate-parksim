@@ -25,13 +25,13 @@
 -spec operators() -> [#operator{}].
 operators() ->
     [#operator{id = <<"leuven">>,   name = <<"Stella">>, color = <<"#3b82f6">>,
-               home = <<"depot-centrum">>,  fleet_size = 12},
+               home = <<"facility-leuven">>,   fleet_size = 12},
      #operator{id = <<"brussels">>, name = <<"Lux">>,    color = <<"#10b981">>,
-               home = <<"depot-heverlee">>, fleet_size = 12},
+               home = <<"facility-brussels">>, fleet_size = 12},
      #operator{id = <<"ghent">>,    name = <<"Volt">>,   color = <<"#f59e0b">>,
-               home = <<"depot-kessel-lo">>, fleet_size = 12},
+               home = <<"facility-ghent">>,    fleet_size = 12},
      #operator{id = <<"antwerp">>,  name = <<"Nova">>,   color = <<"#ec4899">>,
-               home = <<"depot-centrum">>,  fleet_size = 12}].
+               home = <<"facility-antwerp">>,  fleet_size = 12}].
 
 %% @doc The operator this node runs (by TENANT_ID; defaults to leuven).
 -spec operator() -> #operator{}.
@@ -43,20 +43,26 @@ operator() ->
     end.
 
 %%--------------------------------------------------------------------
-%% Facilities — three depots on grid intersections, each with charging +
-%% cleaning; the central depot also does maintenance.
+%% Facilities — one per-operator hub, on a grid block, each with 4 service
+%% bays and the full charge/clean/maintain kit. Block layout (intersection
+%% coords): leuven (1,1), brussels (4,1), ghent (1,4), antwerp (4,4) — a
+%% square inset in the 6x6 city. The realm map mirrors this in
+%% ClankerCabLive @facilities.
 
 -spec facilities() -> [#facility{}].
 facilities() ->
-    [#facility{id = <<"depot-centrum">>,   name = <<"Central Depot">>,
-               x = 3, y = 3, bays = 6,
+    [#facility{id = <<"facility-leuven">>,   name = <<"Stella Hub">>,
+               x = 1, y = 1, bays = 4,
                kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]},
-     #facility{id = <<"depot-heverlee">>,  name = <<"Westside Depot">>,
-               x = 1, y = 5, bays = 5,
-               kinds = [<<"charge">>, <<"clean">>]},
-     #facility{id = <<"depot-kessel-lo">>, name = <<"Eastside Depot">>,
-               x = 5, y = 1, bays = 5,
-               kinds = [<<"charge">>, <<"clean">>]}].
+     #facility{id = <<"facility-brussels">>, name = <<"Lux Hub">>,
+               x = 4, y = 1, bays = 4,
+               kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]},
+     #facility{id = <<"facility-ghent">>,    name = <<"Volt Hub">>,
+               x = 1, y = 4, bays = 4,
+               kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]},
+     #facility{id = <<"facility-antwerp">>,  name = <<"Nova Hub">>,
+               x = 4, y = 4, bays = 4,
+               kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]}].
 
 %%--------------------------------------------------------------------
 %% Demand hotspots — grid intersections where rides start/end. Weight biases
