@@ -43,25 +43,28 @@ operator() ->
     end.
 
 %%--------------------------------------------------------------------
-%% Facilities — one per-operator hub, on a grid block, each with 4 service
-%% bays and the full charge/clean/maintain kit. Block layout (intersection
-%% coords): leuven (1,1), brussels (4,1), ghent (1,4), antwerp (4,4) — a
-%% square inset in the 6x6 city. The realm map mirrors this in
-%% ClankerCabLive @facilities.
+%% Facilities — one per-operator hub, each sitting INSIDE a city block (at the
+%% block centre, off the street lattice) with 4 service bays and the full
+%% charge/clean/maintain kit. Blocks are the cells between intersections, so a
+%% hub centre is a half-integer point: the block with lower corner (bx,by) is
+%% centred at (bx+0.5, by+0.5). Layout — leuven (1,1), brussels (4,1), ghent
+%% (1,4), antwerp (4,4) — a square inset in the 6x6 city. Cabs route on the
+%% lattice and pull into the block to dock; the realm map mirrors these centres
+%% in ClankerCabLive @facilities.
 
 -spec facilities() -> [#facility{}].
 facilities() ->
     [#facility{id = <<"facility-leuven">>,   name = <<"Stella Hub">>,
-               x = 1, y = 1, bays = 4,
+               x = 1.5, y = 1.5, bays = 4,
                kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]},
      #facility{id = <<"facility-brussels">>, name = <<"Lux Hub">>,
-               x = 4, y = 1, bays = 4,
+               x = 4.5, y = 1.5, bays = 4,
                kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]},
      #facility{id = <<"facility-ghent">>,    name = <<"Volt Hub">>,
-               x = 1, y = 4, bays = 4,
+               x = 1.5, y = 4.5, bays = 4,
                kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]},
      #facility{id = <<"facility-antwerp">>,  name = <<"Nova Hub">>,
-               x = 4, y = 4, bays = 4,
+               x = 4.5, y = 4.5, bays = 4,
                kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]}].
 
 %%--------------------------------------------------------------------
