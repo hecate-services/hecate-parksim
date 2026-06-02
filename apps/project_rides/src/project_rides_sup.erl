@@ -1,6 +1,6 @@
-%%% @doc Starts the rides read-model store + the projection worker for the
-%%% ride PRJ department. (No mesh emitters — ride analytics are served by the
-%%% query_rides QRY app; ride markers reach the realm via the fleet telemetry.)
+%%% @doc Starts the rides read-model store, the projection worker, and the
+%%% ride-summary mesh emitter for the ride PRJ department. The emitter no-ops
+%%% while the service is dark, so it's always safe to run.
 -module(project_rides_sup).
 -behaviour(supervisor).
 
@@ -18,4 +18,6 @@ init([]) ->
                    start => {evoq_projection, start_link,
                              [ride_event_to_read_model, #{},
                               #{store_id => hecate_parksim_service:store_id()}]}},
-    {ok, {SupFlags, [Store, Projection]}}.
+    Summary = #{id => emit_rides_summary,
+                start => {emit_rides_summary, start_link, []}},
+    {ok, {SupFlags, [Store, Projection, Summary]}}.
