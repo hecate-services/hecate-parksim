@@ -112,7 +112,8 @@ params() ->
       fare_per_km_cents    => 120,
       fare_per_min_cents   => 25,
       %% demand: ride requests/min across the fleet at peak (per operator).
-      peak_requests_per_min => 14.0,
+      peak_requests_per_min => 10.0,   %% riders now queue + wait; keep the
+                                       %% backlog visible but bounded by the TTL
       request_ttl_secs      => 300}.   %% unassigned requests expire
 
 %%--------------------------------------------------------------------

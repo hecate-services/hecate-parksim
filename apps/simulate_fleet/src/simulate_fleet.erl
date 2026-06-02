@@ -16,7 +16,7 @@
 
 -include_lib("parksim_simulator/include/fleet.hrl").
 
--export([start_link/0, snapshot/0]).
+-export([start_link/0, snapshot/0, riders/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
@@ -36,6 +36,11 @@ start_link() ->
 snapshot() ->
     gen_server:call(?MODULE, snapshot).
 
+%% @doc Waiting riders (unassigned requests) at their pickup points.
+-spec riders() -> [map()].
+riders() ->
+    gen_server:call(?MODULE, riders).
+
 %%--------------------------------------------------------------------
 
 init([]) ->
@@ -53,6 +58,8 @@ init([]) ->
 
 handle_call(snapshot, _From, #state{core = Core} = S) ->
     {reply, simulate_fleet_core:snapshot(Core), S};
+handle_call(riders, _From, #state{core = Core} = S) ->
+    {reply, simulate_fleet_core:riders(Core), S};
 handle_call(_Req, _From, S) ->
     {reply, ok, S}.
 

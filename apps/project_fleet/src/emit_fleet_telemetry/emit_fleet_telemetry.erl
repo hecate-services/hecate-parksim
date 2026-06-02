@@ -58,9 +58,11 @@ publish(#state{company = Company, topic = Topic}) ->
 %% (boot race) — fall back to an empty fleet rather than crash.
 to_fact(Company) ->
     Vehicles = safe(fun simulate_fleet:snapshot/0, []),
+    Riders   = safe(fun simulate_fleet:riders/0, []),
     #{type        => fleet_telemetry,
       company     => Company,
       vehicles    => Vehicles,
+      riders      => Riders,
       observed_at => erlang:system_time(millisecond)}.
 
 safe(Fun, Default) ->

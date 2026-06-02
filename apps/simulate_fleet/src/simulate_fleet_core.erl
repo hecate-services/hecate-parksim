@@ -16,7 +16,7 @@
 
 -include_lib("parksim_simulator/include/fleet.hrl").
 
--export([new/3, tick/5, vehicles/1, snapshot/1]).
+-export([new/3, tick/5, vehicles/1, snapshot/1, riders/1]).
 %% Milestone callbacks — exported so advance/3 can dispatch via ?MODULE:F.
 -export([on_reach_pickup/2, on_reach_dropoff/2, on_reach_facility/2]).
 
@@ -26,6 +26,7 @@
     facilities :: [#facility{}],
     bays_free  :: #{binary() => non_neg_integer()},
     vehicles   :: #{binary() => #fveh{}},
+    pending = [] :: [#ride_request{}],   %% riders waiting for a free cab
     rng        :: rand:state()
 }).
 
@@ -74,13 +75,20 @@ new_vehicle(#operator{id = Op}, I, #facility{x = X, y = Y}) ->
 -spec tick(t(), integer(), number(), [#ride_request{}], route_fun()) ->
     {t(), number(), [{atom(), map()}]}.
 tick(#core{} = Core0, SimUnix, TickSimSecs, NewRequests, RouteFun) ->
-    Ctx0 = #{core => Core0, requests => NewRequests, sim => SimUnix,
+    %% Riders still waiting from prior ticks carry over (minus the ones who
+    %% gave up after request_ttl_secs); new arrivals join the back of the queue.
+    Ttl = maps:get(request_ttl_secs, Core0#core.params, 300),
+    Waiting = [R || R <- Core0#core.pending,
+                    SimUnix - R#ride_request.created < Ttl],
+    Pool = Waiting ++ NewRequests,
+    Ctx0 = #{core => Core0, requests => Pool, sim => SimUnix,
              tick_sim_secs => TickSimSecs,
              route => RouteFun, effects => []},
     Ids = maps:keys(Core0#core.vehicles),
     Ctx1 = lists:foldl(fun(Id, Ctx) -> step(Id, Ctx) end, Ctx0, Ids),
-    #{core := Core1, effects := Effects} = Ctx1,
-    {Core1, length(Effects), lists:reverse(Effects)}.
+    #{core := Core1, requests := Leftover, effects := Effects} = Ctx1,
+    Core2 = Core1#core{pending = Leftover},
+    {Core2, length(Effects), lists:reverse(Effects)}.
 
 %%--------------------------------------------------------------------
 %% Per-vehicle step
@@ -356,6 +364,14 @@ snapshot(#core{vehicles = V}) ->
        service_kind => F#fveh.service_kind,
        cleanliness_pct => round1(F#fveh.cleanliness_pct)}
      || F <- maps:values(V)].
+
+%% @doc Waiting riders (unassigned ride requests) at their pickup points.
+-spec riders(t()) -> [map()].
+riders(#core{pending = P}) ->
+    [#{id => R#ride_request.id,
+       x => x_of(R#ride_request.pickup),
+       y => y_of(R#ride_request.pickup)}
+     || R <- P].
 
 %%--------------------------------------------------------------------
 %% Effect + state plumbing
