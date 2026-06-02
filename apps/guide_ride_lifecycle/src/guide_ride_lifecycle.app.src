@@ -1,0 +1,18 @@
+{application, guide_ride_lifecycle, [
+    {description, "Robotaxi ride lifecycle (request -> assign -> start -> complete | expire)"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {guide_ride_lifecycle_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        crypto,
+        reckon_db,
+        evoq,
+        reckon_evoq,
+        parksim_simulator
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]}
+]}.
