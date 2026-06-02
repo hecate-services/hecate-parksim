@@ -69,6 +69,7 @@ publish(#state{company = Company, topic = Topic}) ->
 to_fact(Company) ->
     Snap   = safe(fun simulate_fleet:snapshot/0, []),
     Counts = phase_counts(Snap),
+    Svc    = service_counts(Snap),
     Ov     = safe(fun project_fleet_store:overview/0, #{}),   %% lifetime tallies
     Fac    = safe(fun project_fleet_store:by_facility/0, []),
     Cruising   = c(cruising, Counts),
@@ -84,9 +85,10 @@ to_fact(Company) ->
       returning     => c(returning, Counts),
       docked        => c(docked, Counts),
       servicing     => c(servicing, Counts),
-      %% the brain snapshot carries no service_kind, so 'charging' (a subset
-      %% of servicing) comes from the read model; 0 until trips accrue there.
-      charging      => g(charging, Ov),
+      %% servicing split by kind, straight from the brain snapshot.
+      charging      => c(<<"charge">>, Svc),
+      cleaning      => c(<<"clean">>, Svc),
+      maintaining   => c(<<"maintain">>, Svc),
       depleted      => c(depleted, Counts),
       active        => Cruising + Dispatched + OnTrip,   %% on the market
       trips         => g(trips, Ov),
@@ -100,6 +102,18 @@ phase_counts(Snap) ->
       fun(V, Acc) ->
           P = maps:get(phase, V, undefined),
           maps:update_with(P, fun(N) -> N + 1 end, 1, Acc)
+      end, #{}, Snap).
+
+%% Count servicing vehicles by their current service_kind binary.
+service_counts(Snap) ->
+    lists:foldl(
+      fun(V, Acc) ->
+          case maps:get(phase, V, undefined) of
+              servicing ->
+                  K = maps:get(service_kind, V, undefined),
+                  maps:update_with(K, fun(N) -> N + 1 end, 1, Acc);
+              _ -> Acc
+          end
       end, #{}, Snap).
 
 c(Phase, Counts) -> maps:get(Phase, Counts, 0).

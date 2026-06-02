@@ -93,10 +93,9 @@ step(Id, Ctx) ->
 %% Idle (commissioned or cruising): decide between a fare and a charge run.
 step_phase(P, V, Ctx) when P =:= commissioned; P =:= cruising ->
     #{core := Core} = Ctx,
-    Params = Core#core.params,
-    case V#fveh.battery_pct =< maps:get(return_threshold_pct, Params) of
-        true  -> begin_return(V, Ctx);
-        false -> try_take_fare(V, Ctx)
+    case service_needs(V, Core#core.params) of
+        []  -> try_take_fare(V, Ctx);
+        _   -> begin_return(V, Ctx)
     end;
 step_phase(dispatched, V, Ctx) -> advance(V, Ctx, on_reach_pickup);
 step_phase(on_trip,    V, Ctx) -> advance(V, Ctx, on_reach_dropoff);
@@ -161,7 +160,8 @@ advance(V, Ctx, OnReach) ->
     NewX = x_of(NewPos), NewY = y_of(NewPos),
     Heading = heading_deg(V#fveh.x, V#fveh.y, NewX, NewY, V#fveh.heading),
     V1 = V#fveh{path = NewPath, x = NewX, y = NewY, heading = Heading,
-                battery_pct = Battery, trip_m = V#fveh.trip_m + MovedM},
+                battery_pct = Battery, trip_m = V#fveh.trip_m + MovedM,
+                km_since_maint = V#fveh.km_since_maint + MovedM / 1000.0},
     case Battery =< 0.0 of
         true  -> deplete(V1, Ctx);
         false ->
@@ -213,7 +213,9 @@ on_reach_pickup(V, Ctx) ->
 on_reach_dropoff(V, Ctx) ->
     #{core := Core} = Ctx,
     Fare = fare_cents(V#fveh.trip_m, Core#core.params),
+    Dirt = maps:get(clean_per_trip, Core#core.params, 0),
     V1 = V#fveh{phase = cruising, leg = none, path = [],
+                cleanliness_pct = max(0.0, V#fveh.cleanliness_pct - Dirt),
                 trip_id = undefined, pickup = undefined, dropoff = undefined},
     emit(V1, {drop_off_passenger,
               #{vehicle_id => V1#fveh.id, fare_cents => Fare,
@@ -224,18 +226,21 @@ on_reach_facility(V, Ctx) ->
     #{core := Core, sim := SimUnix} = Ctx,
     FacId = V#fveh.dest_facility,
     Fac = facility(FacId, Core#core.facilities),
-    {Kind, Ctx1} = choose_service(V, Fac, Ctx),
+    %% Service every overdue need this visit (the facility supports), in order.
+    Needs = [K || K <- service_needs(V, Core#core.params),
+                  lists:member(K, Fac#facility.kinds)],
+    [Kind | Rest] = case Needs of [] -> [<<"charge">>]; _ -> Needs end,
     Dur = service_secs(Kind, Core#core.params),
     Bay = bay_id(FacId, V),
     V1 = V#fveh{phase = servicing, leg = none, path = [],
-                dest_bay = Bay, service_kind = Kind,
+                dest_bay = Bay, service_kind = Kind, service_queue = Rest,
                 service_until = SimUnix + Dur,
                 x = Fac#facility.x, y = Fac#facility.y},
-    %% Two milestones: dock, then begin service.
+    %% Two milestones: dock, then begin service (on the first kind).
     Ctx2 = add_effect({dock_at_facility,
                        #{vehicle_id => V1#fveh.id, facility_id => FacId,
                          bay_id => Bay, x => Fac#facility.x,
-                         y => Fac#facility.y}}, Ctx1),
+                         y => Fac#facility.y}}, Ctx),
     emit(V1, {service_vehicle, #{vehicle_id => V1#fveh.id, kind => Kind}},
          put_veh(V1, Ctx2)).
 
@@ -247,17 +252,29 @@ maybe_finish_service(V, Ctx) ->
     case SimUnix >= V#fveh.service_until of
         false -> put_veh(V, Ctx);
         true  ->
-            Battery = case V#fveh.service_kind of
-                <<"charge">> -> 100.0;
-                _            -> V#fveh.battery_pct
-            end,
-            Core1 = free_bay(Core, V#fveh.dest_facility),
-            V1 = V#fveh{phase = cruising, battery_pct = Battery,
-                        dest_facility = undefined, dest_bay = undefined,
-                        service_kind = undefined, service_until = undefined},
-            emit(V1, {release_vehicle, #{vehicle_id => V1#fveh.id}},
-                 put_veh(V1, Ctx#{core => Core1}))
+            V1 = apply_service(V#fveh.service_kind, V),
+            case V1#fveh.service_queue of
+                [Next | Rest] ->
+                    %% Same visit, next overdue kind — stay in the bay.
+                    Dur = service_secs(Next, Core#core.params),
+                    V2 = V1#fveh{service_kind = Next, service_queue = Rest,
+                                 service_until = SimUnix + Dur},
+                    put_veh(V2, Ctx);
+                [] ->
+                    Core1 = free_bay(Core, V1#fveh.dest_facility),
+                    V2 = V1#fveh{phase = cruising,
+                                 dest_facility = undefined, dest_bay = undefined,
+                                 service_kind = undefined, service_until = undefined},
+                    emit(V2, {release_vehicle, #{vehicle_id => V2#fveh.id}},
+                         put_veh(V2, Ctx#{core => Core1}))
+            end
     end.
+
+%% Reset the metric the just-finished service addressed.
+apply_service(<<"charge">>, V)   -> V#fveh{battery_pct = 100.0};
+apply_service(<<"clean">>, V)    -> V#fveh{cleanliness_pct = 100.0};
+apply_service(<<"maintain">>, V) -> V#fveh{km_since_maint = 0.0};
+apply_service(_, V)              -> V.
 
 %% A stranded vehicle is towed after `tow_secs'; the tow routes it to the
 %% nearest free facility (phase returning, so it docks+charges normally).
@@ -316,23 +333,15 @@ free_bay(#core{} = Core, undefined) -> Core;
 free_bay(#core{bays_free = Free} = Core, FacId) ->
     Core#core{bays_free = maps:update_with(FacId, fun(N) -> N + 1 end, 1, Free)}.
 
-%% Pick a service kind: charge if low, else occasionally clean/maintain.
-choose_service(V, #facility{kinds = Kinds}, Ctx) ->
-    #{core := Core} = Ctx,
-    Thr = maps:get(return_threshold_pct, Core#core.params),
-    case V#fveh.battery_pct =< Thr of
-        true  -> {<<"charge">>, Ctx};
-        false ->
-            {U, Rng1} = rand:uniform_s(Core#core.rng),
-            Ctx1 = Ctx#{core => Core#core{rng = Rng1}},
-            {pick_noncharge(Kinds, U), Ctx1}
-    end.
+%% The service kinds this vehicle is due for, in service order: battery is
+%% safety-critical, then mechanical maintenance, then cosmetic cleaning.
+service_needs(V, P) ->
+    need(V#fveh.battery_pct =< maps:get(return_threshold_pct, P), <<"charge">>)
+        ++ need(V#fveh.km_since_maint >= maps:get(maint_interval_km, P, infinity), <<"maintain">>)
+        ++ need(V#fveh.cleanliness_pct =< maps:get(clean_threshold_pct, P, 0), <<"clean">>).
 
-pick_noncharge(Kinds, U) ->
-    case [K || K <- Kinds, K =/= <<"charge">>] of
-        []     -> <<"charge">>;
-        Others -> lists:nth(trunc(U * length(Others)) + 1, Others)
-    end.
+need(true, K)  -> [K];
+need(false, _) -> [].
 
 %%--------------------------------------------------------------------
 %% Accessors
@@ -345,7 +354,9 @@ vehicles(#core{vehicles = V}) -> maps:values(V).
 snapshot(#core{vehicles = V}) ->
     [#{vehicle_id => F#fveh.id, phase => F#fveh.phase,
        x => F#fveh.x, y => F#fveh.y,
-       heading => F#fveh.heading, battery_pct => round1(F#fveh.battery_pct)}
+       heading => F#fveh.heading, battery_pct => round1(F#fveh.battery_pct),
+       service_kind => F#fveh.service_kind,
+       cleanliness_pct => round1(F#fveh.cleanliness_pct)}
      || F <- maps:values(V)].
 
 %%--------------------------------------------------------------------

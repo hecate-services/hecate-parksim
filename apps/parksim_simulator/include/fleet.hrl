@@ -50,6 +50,10 @@
     dropoff      :: {number(), number()} | undefined,
     trip_m = 0.0 :: float(),     %% metres driven on the current trip (for fare)
 
+    cleanliness_pct = 100.0 :: number(),   %% drops per trip; clean resets to 100
+    km_since_maint  = 0.0   :: number(),   %% accrues per km; maintain resets to 0
+    service_queue   = []    :: [binary()], %% remaining service kinds this visit
+
     dest_facility :: binary() | undefined,
     dest_bay      :: binary() | undefined,
     service_kind  :: binary() | undefined,
