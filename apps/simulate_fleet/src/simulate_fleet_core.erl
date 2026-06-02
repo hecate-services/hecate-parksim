@@ -158,7 +158,9 @@ advance(V, Ctx, OnReach) ->
         walk(V#fveh.path, {V#fveh.x, V#fveh.y}, BudgetM),
     Drain = (MovedM / 1000.0) * maps:get(battery_drain_per_km, Params),
     Battery = V#fveh.battery_pct - Drain,
-    V1 = V#fveh{path = NewPath, x = x_of(NewPos), y = y_of(NewPos),
+    NewX = x_of(NewPos), NewY = y_of(NewPos),
+    Heading = heading_deg(V#fveh.x, V#fveh.y, NewX, NewY, V#fveh.heading),
+    V1 = V#fveh{path = NewPath, x = NewX, y = NewY, heading = Heading,
                 battery_pct = Battery, trip_m = V#fveh.trip_m + MovedM},
     case Battery =< 0.0 of
         true  -> deplete(V1, Ctx);
@@ -167,6 +169,17 @@ advance(V, Ctx, OnReach) ->
                 true  -> ?MODULE:OnReach(V1, Ctx);
                 false -> put_veh(V1, Ctx)
             end
+    end.
+
+%% Travel direction in degrees: 0 = +x (east), +90 = +y (south on the map,
+%% whose y increases downward). Matches the SVG rotate() the realm map applies
+%% to the car marker. Holds the previous heading on a zero-length step so a
+%% parked car keeps facing where it last drove.
+heading_deg(X0, Y0, X1, Y1, Prev) ->
+    Dx = X1 - X0, Dy = Y1 - Y0,
+    case (abs(Dx) < 1.0e-9) andalso (abs(Dy) < 1.0e-9) of
+        true  -> Prev;
+        false -> math:atan2(Dy, Dx) * 180.0 / math:pi()
     end.
 
 %% Walk along the polyline consuming up to BudgetM metres.
