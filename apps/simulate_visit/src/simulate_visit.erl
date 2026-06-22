@@ -29,14 +29,26 @@ run(#{lot := Lot, plate := Plate, credential := Credential}) ->
     SessionId = reckon_gater_stream_id:new(<<"sess">>),
     CardId    = card_id(Credential),
     PermitRef = permit_ref(Credential),
-    enter(SessionId, LotId, Plate, CardId, PermitRef),
-    {BayId, Rng1} = pick_bay(Rng, Lot),
-    dock(SessionId, BayId),
-    {DwellSec, Rng2} = sample_dwell(Rng1, Lot),
-    simulate_clock:sleep_simulated(DwellSec * 1000),
-    case roll_abandon(Rng2) of
-        {true,  _Rng3} -> ok;
-        {false, Rng3}  -> settle(SessionId, DwellSec, Credential, Rng3)
+    StoreId   = hecate_parksim_service:store_id(),
+    case parking_session_dcb:claim_entry(StoreId, Plate, LotId, SessionId) of
+        {error, already_parked} ->
+            %% Vehicle is currently in another lot — turn away silently.
+            ok;
+        _ ->
+            %% ok, or a transient DCB error — fail open and proceed.
+            enter(SessionId, LotId, Plate, CardId, PermitRef),
+            {BayId, Rng1} = pick_bay(Rng, Lot),
+            dock(SessionId, BayId),
+            {DwellSec, Rng2} = sample_dwell(Rng1, Lot),
+            simulate_clock:sleep_simulated(DwellSec * 1000),
+            case roll_abandon(Rng2) of
+                {true,  _Rng3} ->
+                    %% Abandoned vehicle stays parked — DCB slot remains claimed,
+                    %% mirroring the real-world state (car is still there).
+                    ok;
+                {false, Rng3}  ->
+                    settle(SessionId, DwellSec, Credential, Rng3, StoreId, Plate)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -86,25 +98,31 @@ archive(SessionId, Reason) ->
 
 %% Ticket visits pay at the kiosk (before undocking) or at the exit
 %% island (after undocking) — 50/50. Permit holders skip payment.
-settle(SessionId, DwellSec, ticket, Rng) ->
+settle(SessionId, DwellSec, ticket, Rng, StoreId, Plate) ->
     Amount = compute_fee_cents(DwellSec),
     {PayPoint, Rng1} = roll_pay_point(Rng),
     {Pause, _Rng2}   = uniform_int_s(Rng1, 2, 90),
-    settle_ticket(SessionId, Amount, Pause, PayPoint);
-settle(SessionId, _DwellSec, {permit, _Ref}, _Rng) ->
+    settle_ticket(SessionId, Amount, Pause, PayPoint, StoreId, Plate);
+settle(SessionId, _DwellSec, {permit, _Ref}, _Rng, StoreId, Plate) ->
     undock(SessionId),
-    archive(SessionId, <<"permit">>).
+    archive(SessionId, <<"permit">>),
+    _ = parking_session_dcb:release_entry(StoreId, Plate, SessionId),
+    ok.
 
-settle_ticket(SessionId, Amount, Pause, kiosk) ->
+settle_ticket(SessionId, Amount, Pause, kiosk, StoreId, Plate) ->
     simulate_clock:sleep_simulated(Pause * 1000),
     pay(SessionId, Amount),
     undock(SessionId),
-    archive(SessionId, undefined);
-settle_ticket(SessionId, Amount, Pause, exit) ->
+    archive(SessionId, undefined),
+    _ = parking_session_dcb:release_entry(StoreId, Plate, SessionId),
+    ok;
+settle_ticket(SessionId, Amount, Pause, exit, StoreId, Plate) ->
     undock(SessionId),
     simulate_clock:sleep_simulated(Pause * 1000),
     pay(SessionId, Amount),
-    archive(SessionId, undefined).
+    archive(SessionId, undefined),
+    _ = parking_session_dcb:release_entry(StoreId, Plate, SessionId),
+    ok.
 
 %%--------------------------------------------------------------------
 %% Fee model — flat EUR 2.50 / started hour, min EUR 0.50. Crude but
