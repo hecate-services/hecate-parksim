@@ -50,7 +50,15 @@ ensure_store() ->
         store_id = store_id(),
         data_dir = data_dir(),
         mode     = single,
-        indexes  = [tags, event_type]
+        indexes  = [tags, event_type,
+                    {payload, <<"plate">>},
+                    {payload, <<"lot_id">>},
+                    {payload, <<"ride_id">>},
+                    {payload, <<"vehicle_id">>},
+                    {payload, <<"company_id">>},
+                    {payload, <<"bay_id">>},
+                    {payload_hash, [<<"lot_id">>, <<"plate">>]},
+                    {payload_hash, [<<"facility_id">>, <<"bay_id">>]}]
     },
     case reckon_db_sup:start_store(Config) of
         {ok, _Pid}                    -> ok;
