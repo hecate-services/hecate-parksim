@@ -92,11 +92,32 @@ do_tick(#state{core = Core0, params = Params, rng = Rng0, last_sim = Last} = S) 
 
 %% Dispatch each {Command, Payload} effect into the aggregate. Failures are
 %% logged-and-swallowed: a single bad command must not stall the fleet.
+%%
+%% Bay DCB checks are performed here (not in the handler) to keep handlers
+%% pure and unit-testable — same pattern as parking_session_dcb in simulate_visit.
 run_effects(Effects) ->
-    lists:foreach(fun({Cmd, Payload}) ->
-        Mod = handler_for(Cmd),
-        _ = catch Mod:dispatch(Payload)
-    end, Effects).
+    StoreId = hecate_parksim_service:store_id(),
+    lists:foreach(fun(Effect) -> run_effect(Effect, StoreId) end, Effects).
+
+run_effect({dock_at_facility, #{facility_id := FacId, bay_id := BayId,
+                                vehicle_id  := VehicleId} = Payload}, StoreId) ->
+    case vehicle_bay_dcb:claim_bay(StoreId, FacId, BayId, VehicleId) of
+        ok ->
+            _ = catch maybe_dock_at_facility:dispatch(Payload);
+        {error, Reason} ->
+            logger:warning("[parksim] bay ~s/~s already occupied, skipping dock: ~p",
+                           [FacId, BayId, Reason])
+    end;
+run_effect({release_vehicle, #{facility_id := FacId, bay_id := BayId} = Payload},
+           StoreId) ->
+    _ = catch maybe_release_vehicle:dispatch(Payload),
+    _ = vehicle_bay_dcb:release_bay(StoreId, FacId, BayId);
+run_effect({release_vehicle, Payload}, _StoreId) ->
+    %% Fallback: no facility_id/bay_id in payload (e.g. test/manual dispatch).
+    _ = catch maybe_release_vehicle:dispatch(Payload);
+run_effect({Cmd, Payload}, _StoreId) ->
+    Mod = handler_for(Cmd),
+    _ = catch Mod:dispatch(Payload).
 
 handler_for(commission_vehicle)  -> maybe_commission_vehicle;
 handler_for(dispatch_vehicle)    -> maybe_dispatch_vehicle;

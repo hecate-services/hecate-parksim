@@ -20,6 +20,7 @@
     y          :: number() | undefined,
 
     %% Current trip (set on dispatch, cleared on drop-off).
+    ride_id      :: binary() | undefined,
     trip_id      :: binary() | undefined,
     pickup_x   :: number() | undefined,
     pickup_y   :: number() | undefined,

@@ -18,7 +18,7 @@
 
 -export([
     vehicle_id/1, company_id/1, status_flags/1, battery_pct/1,
-    x/1, y/1, trip_id/1, facility_id/1, bay_id/1, service_kind/1,
+    x/1, y/1, ride_id/1, trip_id/1, facility_id/1, bay_id/1, service_kind/1,
     trips_completed/1, fares_cents/1,
     has_status/2, is_commissioned/1, is_cruising/1, is_dispatched/1,
     is_on_trip/1, is_returning/1, is_docked/1, is_servicing/1, is_depleted/1,
@@ -46,6 +46,7 @@ apply_event(S, #{event_type := <<"vehicle_commissioned">>} = Ev) ->
     };
 apply_event(S, #{event_type := <<"vehicle_dispatched">>} = Ev) ->
     (set_phase(S, ?VEH_DISPATCHED))#vehicle_state{
+        ride_id       = g(ride_id, Ev, S#vehicle_state.ride_id),
         trip_id       = g(trip_id, Ev, S#vehicle_state.trip_id),
         pickup_x    = g(pickup_x, Ev, S#vehicle_state.pickup_x),
         pickup_y    = g(pickup_y, Ev, S#vehicle_state.pickup_y),
@@ -64,6 +65,7 @@ apply_event(S, #{event_type := <<"passenger_dropped_off">>} = Ev) ->
     (set_phase(S, ?VEH_CRUISING))#vehicle_state{
         x             = g(x, Ev, S#vehicle_state.x),
         y             = g(y, Ev, S#vehicle_state.y),
+        ride_id         = undefined,
         trip_id         = undefined,
         pickup_x      = undefined,
         pickup_y      = undefined,
@@ -130,6 +132,7 @@ to_map(#vehicle_state{} = S) ->
       battery_pct     => S#vehicle_state.battery_pct,
       x             => S#vehicle_state.x,
       y             => S#vehicle_state.y,
+      ride_id         => S#vehicle_state.ride_id,
       trip_id         => S#vehicle_state.trip_id,
       pickup_x      => S#vehicle_state.pickup_x,
       pickup_y      => S#vehicle_state.pickup_y,
@@ -162,6 +165,7 @@ status_flags(#vehicle_state{status_flags = V})       -> V.
 battery_pct(#vehicle_state{battery_pct = V})         -> V.
 x(#vehicle_state{x = V})                         -> V.
 y(#vehicle_state{y = V})                         -> V.
+ride_id(#vehicle_state{ride_id = V})                 -> V.
 trip_id(#vehicle_state{trip_id = V})                 -> V.
 facility_id(#vehicle_state{facility_id = V})         -> V.
 bay_id(#vehicle_state{bay_id = V})                   -> V.

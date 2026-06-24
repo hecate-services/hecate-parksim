@@ -3,6 +3,10 @@
 %%% Requires the vehicle to be RETURNING (heading to a facility). A depleted
 %%% (stranded) vehicle can also dock — it's been towed in — so RETURNING or
 %%% DEPLETED both qualify. Emits `vehicle_docked_at_facility_v1`.
+%%%
+%%% Bay uniqueness (DCB) is enforced by the caller (`simulate_fleet.erl`)
+%%% before dispatching this command, following the same pattern as
+%%% `parking_session_dcb` in `simulate_visit`.
 %%% (`_at_facility` disambiguates from the parking-session `maybe_dock_vehicle`.)
 -module(maybe_dock_at_facility).
 
@@ -21,7 +25,7 @@ handle(Cmd, State) ->
         ok ->
             case can_dock(State) of
                 false -> {error, vehicle_not_returning};
-                true  -> emit(Cmd)
+                true  -> emit(Cmd, State)
             end;
         {error, _} = Err -> Err
     end.
@@ -30,13 +34,14 @@ handle(Cmd, State) ->
 can_dock(State) ->
     vehicle_state:is_returning(State) orelse vehicle_state:is_depleted(State).
 
-emit(Cmd) ->
+emit(Cmd, State) ->
     {ok, Ev} = vehicle_docked_at_facility_v1:new(#{
         vehicle_id  => dock_at_facility_v1:get_vehicle_id(Cmd),
+        company_id  => vehicle_state:company_id(State),
         facility_id => dock_at_facility_v1:get_facility_id(Cmd),
         bay_id      => dock_at_facility_v1:get_bay_id(Cmd),
-        x         => dock_at_facility_v1:get_x(Cmd),
-        y         => dock_at_facility_v1:get_y(Cmd),
+        x           => dock_at_facility_v1:get_x(Cmd),
+        y           => dock_at_facility_v1:get_y(Cmd),
         docked_at   => coalesce(dock_at_facility_v1:get_docked_at(Cmd), iso8601_now())
     }),
     {ok, [vehicle_docked_at_facility_v1:to_map(Ev)]}.

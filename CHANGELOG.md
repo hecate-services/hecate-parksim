@@ -4,6 +4,57 @@ All notable changes to **hecate-parksim-simulator** are documented here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-24
+
+### Added
+
+- **Payload enrichment (Options A–D)**
+
+  *Option A — Parking session denormalization.* `vehicle_docked_v1`,
+  `vehicle_undocked_v1`, `payment_captured_v1`, and
+  `parking_session_archived_v1` now carry `plate` and `lot_id` so
+  every tail event is self-contained without replaying back to
+  `session_initiated_v1`. `payment_captured_v1` additionally carries
+  `payment_method` (`"card"` or `"permit"` derived from the aggregate
+  state). `parking_session_archived_v1` carries `duration_s` (seconds
+  from entry to archive).
+
+  *Option B — ride\_id threading.* `vehicle_dispatched_v1`,
+  `passenger_picked_up_v1`, `passenger_dropped_off_v1`, and
+  `fare_collected_v1` now carry the `ride_id` of the active ride.
+  `ride_started_v1` and `ride_completed_v1` carry `vehicle_id`.
+  `vehicle_state` tracks `ride_id` and propagates it through the
+  dispatch → pickup → dropoff lifecycle.
+
+  *Option C — company\_id on all vehicle lifecycle events.*
+  `vehicle_dispatched_v1`, `passenger_picked_up_v1`,
+  `passenger_dropped_off_v1`, `fare_collected_v1`,
+  `vehicle_returning_v1`, `vehicle_docked_at_facility_v1`,
+  `vehicle_serviced_v1`, `vehicle_released_v1`, and
+  `battery_depleted_v1` now carry `company_id` (the operator identity
+  set at commissioning, read from aggregate state at emit time).
+
+  *Option D — Bay uniqueness via DCB.* New `vehicle_bay_dcb` module
+  enforces the invariant that two vehicles cannot claim the same
+  facility bay simultaneously. `maybe_dock_at_facility` calls
+  `vehicle_bay_dcb:claim_bay/4` before emitting; `maybe_release_vehicle`
+  calls `vehicle_bay_dcb:release_bay/3` after the vehicle departs.
+  Uses `append_if_no_tag_matches` with tag `bay:<facility_id>:<bay_id>`.
+
+- **Store indexes.** `hecate_parksim_service:ensure_store/0` now
+  declares `[tags, event_type]` indexes on the reckon-db store, making
+  tag-based DCB reads (used by both `parking_session_dcb` and
+  `vehicle_bay_dcb`) index-backed rather than full-scan.
+
+### Changed
+
+- `simulate_fleet_core`: `dispatch_vehicle`, `pick_up_passenger`,
+  `drop_off_passenger`, `return_vehicle`, `dock_at_facility`,
+  `service_vehicle`, `release_vehicle`, and `deplete_battery` effects
+  now include `company_id` and/or `ride_id` in their payloads so the
+  command handlers can propagate them without needing aggregate state
+  lookups.
+
 ## [0.2.0] - 2026-05-31
 
 ### Changed

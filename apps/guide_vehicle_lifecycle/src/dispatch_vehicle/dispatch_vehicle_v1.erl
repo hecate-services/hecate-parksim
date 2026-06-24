@@ -6,11 +6,12 @@
 -export([command_type/0]).
 -export([new/1, from_map/1, validate/1, to_map/1]).
 -export([stream_id/1]).
--export([get_vehicle_id/1, get_trip_id/1, get_pickup_x/1, get_pickup_y/1,
+-export([get_vehicle_id/1, get_ride_id/1, get_trip_id/1, get_pickup_x/1, get_pickup_y/1,
          get_dropoff_x/1, get_dropoff_y/1, get_dispatched_at/1]).
 
 -record(dispatch_vehicle_v1, {
     vehicle_id    :: binary() | undefined,
+    ride_id       :: binary() | undefined,
     trip_id       :: binary() | undefined,
     pickup_x    :: number() | undefined,
     pickup_y    :: number() | undefined,
@@ -28,6 +29,7 @@ command_type() -> dispatch_vehicle_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #dispatch_vehicle_v1{
         vehicle_id    = Id,
+        ride_id       = maps:get(ride_id, P, undefined),
         trip_id       = maps:get(trip_id, P, undefined),
         pickup_x    = maps:get(pickup_x, P, undefined),
         pickup_y    = maps:get(pickup_y, P, undefined),
@@ -41,6 +43,7 @@ new(_) -> {error, missing_aggregate_id}.
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #dispatch_vehicle_v1{
         vehicle_id    = Id,
+        ride_id       = maps:get(<<"ride_id">>, M, undefined),
         trip_id       = maps:get(<<"trip_id">>, M, undefined),
         pickup_x    = maps:get(<<"pickup_x">>, M, undefined),
         pickup_y    = maps:get(<<"pickup_y">>, M, undefined),
@@ -51,6 +54,7 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #dispatch_vehicle_v1{
         vehicle_id    = Id,
+        ride_id       = maps:get(ride_id, M, undefined),
         trip_id       = maps:get(trip_id, M, undefined),
         pickup_x    = maps:get(pickup_x, M, undefined),
         pickup_y    = maps:get(pickup_y, M, undefined),
@@ -69,6 +73,7 @@ validate(_) -> ok.
 to_map(#dispatch_vehicle_v1{} = C) ->
     #{command_type  => <<"dispatch_vehicle">>,
       vehicle_id    => C#dispatch_vehicle_v1.vehicle_id,
+      ride_id       => C#dispatch_vehicle_v1.ride_id,
       trip_id       => C#dispatch_vehicle_v1.trip_id,
       pickup_x    => C#dispatch_vehicle_v1.pickup_x,
       pickup_y    => C#dispatch_vehicle_v1.pickup_y,
@@ -80,6 +85,7 @@ to_map(#dispatch_vehicle_v1{} = C) ->
 stream_id(#dispatch_vehicle_v1{vehicle_id = Id}) -> <<"vehicle-", Id/binary>>.
 
 get_vehicle_id(#dispatch_vehicle_v1{vehicle_id = V})       -> V.
+get_ride_id(#dispatch_vehicle_v1{ride_id = V})             -> V.
 get_trip_id(#dispatch_vehicle_v1{trip_id = V})             -> V.
 get_pickup_x(#dispatch_vehicle_v1{pickup_x = V})       -> V.
 get_pickup_y(#dispatch_vehicle_v1{pickup_y = V})       -> V.

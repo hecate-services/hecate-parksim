@@ -17,14 +17,15 @@ handle(Cmd, State) ->
         ok ->
             case ride_state:is_started(State) of
                 false -> {error, ride_not_started};
-                true  -> emit(Cmd)
+                true  -> emit(Cmd, State)
             end;
         {error, _} = Err -> Err
     end.
 
-emit(Cmd) ->
+emit(Cmd, State) ->
     {ok, Ev} = ride_completed_v1:new(#{
         ride_id      => complete_ride_v1:get_ride_id(Cmd),
+        vehicle_id   => ride_state:vehicle_id(State),
         fare_cents   => complete_ride_v1:get_fare_cents(Cmd),
         completed_at => coalesce(complete_ride_v1:get_completed_at(Cmd), iso8601_now())
     }),

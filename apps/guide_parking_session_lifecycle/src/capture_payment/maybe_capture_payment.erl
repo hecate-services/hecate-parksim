@@ -28,16 +28,23 @@ check_state(Cmd, State) ->
         true ->
             case parking_session_state:is_paid(State) of
                 true  -> {error, session_already_paid};
-                false -> emit(Cmd)
+                false -> emit(Cmd, State)
             end
     end.
 
-emit(Cmd) ->
+emit(Cmd, State) ->
+    PaymentMethod = case parking_session_state:permit_ref(State) of
+        undefined -> <<"card">>;
+        _Ref      -> <<"permit">>
+    end,
     {ok, Event} = payment_captured_v1:new(#{
-        session_id   => capture_payment_v1:get_session_id(Cmd),
-        amount_cents => capture_payment_v1:get_amount_cents(Cmd),
-        paid_at      => coalesce(capture_payment_v1:get_paid_at(Cmd),
-                                 iso8601_now())
+        session_id     => capture_payment_v1:get_session_id(Cmd),
+        amount_cents   => capture_payment_v1:get_amount_cents(Cmd),
+        plate          => parking_session_state:plate(State),
+        lot_id         => parking_session_state:lot_id(State),
+        payment_method => PaymentMethod,
+        paid_at        => coalesce(capture_payment_v1:get_paid_at(Cmd),
+                                   iso8601_now())
     }),
     {ok, [Event]}.
 

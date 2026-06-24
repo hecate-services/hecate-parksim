@@ -24,7 +24,7 @@ handle(Cmd, State) ->
                 false ->
                     case is_moving(State) of
                         false -> {error, vehicle_not_moving};
-                        true  -> emit(Cmd)
+                        true  -> emit(Cmd, State)
                     end
             end;
         {error, _} = Err -> Err
@@ -37,9 +37,10 @@ is_moving(State) ->
         orelse vehicle_state:is_on_trip(State)
         orelse vehicle_state:is_returning(State).
 
-emit(Cmd) ->
+emit(Cmd, State) ->
     {ok, Ev} = battery_depleted_v1:new(#{
         vehicle_id  => deplete_battery_v1:get_vehicle_id(Cmd),
+        company_id  => vehicle_state:company_id(State),
         x         => deplete_battery_v1:get_x(Cmd),
         y         => deplete_battery_v1:get_y(Cmd),
         depleted_at => coalesce(deplete_battery_v1:get_depleted_at(Cmd),

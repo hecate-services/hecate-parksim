@@ -40,11 +40,16 @@ check_state(Cmd, State) ->
     end.
 
 emit(Cmd, State) ->
+    ArchivedAt = coalesce(archive_parking_session_v1:get_archived_at(Cmd),
+                          iso8601_now()),
+    DurationS  = duration_s(parking_session_state:entered_at(State), ArchivedAt),
     {ok, Event} = parking_session_archived_v1:new(#{
         session_id  => parking_session_state:session_id(State),
         fee_cents   => parking_session_state:amount_cents(State),
-        archived_at => coalesce(archive_parking_session_v1:get_archived_at(Cmd),
-                                iso8601_now()),
+        plate       => parking_session_state:plate(State),
+        lot_id      => parking_session_state:lot_id(State),
+        duration_s  => DurationS,
+        archived_at => ArchivedAt,
         reason      => archive_parking_session_v1:get_reason(Cmd)
     }),
     {ok, [Event]}.
@@ -77,6 +82,19 @@ dispatch(Cmd) ->
 
 %%--------------------------------------------------------------------
 %% Helpers
+
+-define(UNIX_EPOCH_GREGORIAN, 62167219200).
+
+duration_s(EnteredAt, ArchivedAt) when is_binary(EnteredAt), is_binary(ArchivedAt) ->
+    max(0, iso8601_to_unix(ArchivedAt) - iso8601_to_unix(EnteredAt));
+duration_s(_, _) -> undefined.
+
+iso8601_to_unix(<<Y:4/binary, "-", Mo:2/binary, "-", D:2/binary, "T",
+                  H:2/binary, ":", Mi:2/binary, ":", S:2/binary, _/binary>>) ->
+    DT = {{binary_to_integer(Y), binary_to_integer(Mo), binary_to_integer(D)},
+          {binary_to_integer(H), binary_to_integer(Mi), binary_to_integer(S)}},
+    calendar:datetime_to_gregorian_seconds(DT) - ?UNIX_EPOCH_GREGORIAN;
+iso8601_to_unix(_) -> 0.
 
 coalesce(undefined, Default) -> Default;
 coalesce(Value, _Default)    -> Value.

@@ -29,14 +29,20 @@ handle(Cmd, State) ->
 
 emit(Cmd, State) ->
     At = coalesce(drop_off_passenger_v1:get_dropped_off_at(Cmd), iso8601_now()),
+    CompanyId = vehicle_state:company_id(State),
+    RideId = vehicle_state:ride_id(State),
     {ok, Dropped} = passenger_dropped_off_v1:new(#{
         vehicle_id     => drop_off_passenger_v1:get_vehicle_id(Cmd),
+        company_id     => CompanyId,
+        ride_id        => RideId,
         x            => drop_off_passenger_v1:get_x(Cmd),
         y            => drop_off_passenger_v1:get_y(Cmd),
         dropped_off_at => At
     }),
     {ok, Fare} = fare_collected_v1:new(#{
         vehicle_id   => drop_off_passenger_v1:get_vehicle_id(Cmd),
+        company_id   => CompanyId,
+        ride_id      => RideId,
         trip_id      => vehicle_state:trip_id(State),
         amount_cents => drop_off_passenger_v1:get_fare_cents(Cmd),
         collected_at => At

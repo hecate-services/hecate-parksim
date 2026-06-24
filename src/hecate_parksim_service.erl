@@ -49,7 +49,8 @@ ensure_store() ->
     Config = #store_config{
         store_id = store_id(),
         data_dir = data_dir(),
-        mode     = single
+        mode     = single,
+        indexes  = [tags, event_type]
     },
     case reckon_db_sup:start_store(Config) of
         {ok, _Pid}                    -> ok;

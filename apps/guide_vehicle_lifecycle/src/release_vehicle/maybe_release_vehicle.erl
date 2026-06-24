@@ -3,6 +3,10 @@
 %%% Requires the vehicle to be SERVICING or DOCKED (docked-but-not-yet-
 %%% serviced is allowed to leave, e.g. a false alarm). Emits
 %%% `vehicle_released_v1`, flipping it back to CRUISING.
+%%%
+%%% Bay DCB release is called by the caller (`simulate_fleet.erl`) after
+%%% the command succeeds, following the same pattern as `parking_session_dcb`
+%%% in `simulate_visit`.
 -module(maybe_release_vehicle).
 
 -include_lib("evoq/include/evoq.hrl").
@@ -20,7 +24,7 @@ handle(Cmd, State) ->
         ok ->
             case can_release(State) of
                 false -> {error, vehicle_not_in_facility};
-                true  -> emit(Cmd)
+                true  -> emit(Cmd, State)
             end;
         {error, _} = Err -> Err
     end.
@@ -28,9 +32,10 @@ handle(Cmd, State) ->
 can_release(State) ->
     vehicle_state:is_servicing(State) orelse vehicle_state:is_docked(State).
 
-emit(Cmd) ->
+emit(Cmd, State) ->
     {ok, Ev} = vehicle_released_v1:new(#{
         vehicle_id  => release_vehicle_v1:get_vehicle_id(Cmd),
+        company_id  => vehicle_state:company_id(State),
         released_at => coalesce(release_vehicle_v1:get_released_at(Cmd),
                                 iso8601_now())
     }),

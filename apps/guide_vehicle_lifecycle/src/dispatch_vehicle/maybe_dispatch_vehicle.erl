@@ -30,7 +30,7 @@ check_state(Cmd, State) ->
         true  ->
             case has_charge(State) of
                 false -> {error, battery_too_low};
-                true  -> emit(Cmd)
+                true  -> emit(Cmd, State)
             end
     end.
 
@@ -40,9 +40,11 @@ has_charge(State) ->
         Pct       -> Pct >= ?MIN_DISPATCH_BATTERY_PCT
     end.
 
-emit(Cmd) ->
+emit(Cmd, State) ->
     {ok, Ev} = vehicle_dispatched_v1:new(#{
         vehicle_id    => dispatch_vehicle_v1:get_vehicle_id(Cmd),
+        company_id    => vehicle_state:company_id(State),
+        ride_id       => dispatch_vehicle_v1:get_ride_id(Cmd),
         trip_id       => dispatch_vehicle_v1:get_trip_id(Cmd),
         pickup_x    => dispatch_vehicle_v1:get_pickup_x(Cmd),
         pickup_y    => dispatch_vehicle_v1:get_pickup_y(Cmd),

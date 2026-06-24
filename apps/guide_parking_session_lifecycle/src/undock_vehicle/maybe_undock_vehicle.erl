@@ -31,13 +31,15 @@ check_state(Cmd, State) ->
         true ->
             case parking_session_state:is_undocked(State) of
                 true  -> {error, vehicle_already_undocked};
-                false -> emit(Cmd)
+                false -> emit(Cmd, State)
             end
     end.
 
-emit(Cmd) ->
+emit(Cmd, State) ->
     {ok, Event} = vehicle_undocked_v1:new(#{
         session_id  => undock_vehicle_v1:get_session_id(Cmd),
+        plate       => parking_session_state:plate(State),
+        lot_id      => parking_session_state:lot_id(State),
         undocked_at => coalesce(undock_vehicle_v1:get_undocked_at(Cmd), iso8601_now())
     }),
     {ok, [Event]}.

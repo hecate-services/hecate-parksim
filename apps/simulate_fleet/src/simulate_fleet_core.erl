@@ -150,10 +150,12 @@ try_take_fare(V, Ctx) ->
                               Ctx#{requests => Rest}),
             emit(V1, {dispatch_vehicle,
                       #{vehicle_id => V1#fveh.id, trip_id => V1#fveh.trip_id,
-                        pickup_x => x_of(V1#fveh.pickup),
-                        pickup_y => y_of(V1#fveh.pickup),
-                        dropoff_x => x_of(V1#fveh.dropoff),
-                        dropoff_y => y_of(V1#fveh.dropoff)}},
+                        ride_id    => V1#fveh.ride_id,
+                        company_id => (Core#core.operator)#operator.id,
+                        pickup_x   => x_of(V1#fveh.pickup),
+                        pickup_y   => y_of(V1#fveh.pickup),
+                        dropoff_x  => x_of(V1#fveh.dropoff),
+                        dropoff_y  => y_of(V1#fveh.dropoff)}},
                  put_veh(V1, Ctx1));
         _ ->
             put_veh(V, Ctx)   %% no fare (or too flat) — idle this tick
@@ -172,7 +174,8 @@ begin_return(V, Ctx) ->
             V1 = V#fveh{phase = returning, leg = to_facility, path = Path,
                         dest_facility = FacId},
             emit(V1, {return_vehicle,
-                      #{vehicle_id => V1#fveh.id, facility_id => FacId}},
+                      #{vehicle_id => V1#fveh.id, facility_id => FacId,
+                        company_id => (Core#core.operator)#operator.id}},
                  put_veh(V1, Ctx#{core => Core1}))
     end.
 
@@ -232,12 +235,14 @@ walk([Next | Rest] = Path, Pos, Budget, Moved) ->
 %% Leg-completion milestones
 
 on_reach_pickup(V, Ctx) ->
-    Route = maps:get(route, Ctx),
+    #{route := Route, core := Core} = Ctx,
     {Path, _D} = Route(V#fveh.pickup, V#fveh.dropoff),
     V1 = V#fveh{phase = on_trip, leg = to_dropoff, path = Path, trip_m = 0.0},
     Ctx1 = add_effect({start_ride, #{ride_id => V#fveh.ride_id}}, Ctx),
     emit(V1, {pick_up_passenger,
               #{vehicle_id => V1#fveh.id,
+                ride_id    => V#fveh.ride_id,
+                company_id => (Core#core.operator)#operator.id,
                 x => V1#fveh.x, y => V1#fveh.y}},
          put_veh(V1, Ctx1)).
 
@@ -253,6 +258,8 @@ on_reach_dropoff(V, Ctx) ->
                 pickup = undefined, dropoff = undefined},
     emit(V1, {drop_off_passenger,
               #{vehicle_id => V1#fveh.id, fare_cents => Fare,
+                ride_id    => V#fveh.ride_id,
+                company_id => (Core#core.operator)#operator.id,
                 x => V1#fveh.x, y => V1#fveh.y}},
          put_veh(V1, Ctx1)).
 
@@ -273,9 +280,12 @@ on_reach_facility(V, Ctx) ->
     %% Two milestones: dock, then begin service (on the first kind).
     Ctx2 = add_effect({dock_at_facility,
                        #{vehicle_id => V1#fveh.id, facility_id => FacId,
-                         bay_id => Bay, x => Fac#facility.x,
-                         y => Fac#facility.y}}, Ctx),
-    emit(V1, {service_vehicle, #{vehicle_id => V1#fveh.id, kind => Kind}},
+                         bay_id     => Bay, x => Fac#facility.x,
+                         y          => Fac#facility.y,
+                         company_id => (Core#core.operator)#operator.id}}, Ctx),
+    emit(V1, {service_vehicle,
+              #{vehicle_id => V1#fveh.id, kind => Kind,
+                company_id => (Core#core.operator)#operator.id}},
          put_veh(V1, Ctx2)).
 
 %%--------------------------------------------------------------------
@@ -299,7 +309,11 @@ maybe_finish_service(V, Ctx) ->
                     V2 = V1#fveh{phase = cruising,
                                  dest_facility = undefined, dest_bay = undefined,
                                  service_kind = undefined, service_until = undefined},
-                    emit(V2, {release_vehicle, #{vehicle_id => V2#fveh.id}},
+                    emit(V2, {release_vehicle,
+                              #{vehicle_id  => V2#fveh.id,
+                                company_id  => (Core#core.operator)#operator.id,
+                                facility_id => V1#fveh.dest_facility,
+                                bay_id      => V1#fveh.dest_bay}},
                          put_veh(V2, Ctx#{core => Core1}))
             end
     end.
@@ -328,7 +342,8 @@ maybe_tow(V, Ctx) ->
                                 dest_facility = FacId, tow_until = undefined,
                                 battery_pct = 5.0},  %% tow gives a limp charge
                     emit(V1, {return_vehicle,
-                              #{vehicle_id => V1#fveh.id, facility_id => FacId}},
+                              #{vehicle_id => V1#fveh.id, facility_id => FacId,
+                                company_id => (Core#core.operator)#operator.id}},
                          put_veh(V1, Ctx#{core => Core1}))
             end
     end.
@@ -339,7 +354,9 @@ deplete(V, Ctx) ->
     V1 = V#fveh{phase = depleted, battery_pct = 0.0, leg = none, path = [],
                 tow_until = TowAt},
     emit(V1, {deplete_battery,
-              #{vehicle_id => V1#fveh.id, x => V1#fveh.x, y => V1#fveh.y}},
+              #{vehicle_id => V1#fveh.id,
+                company_id => (Core#core.operator)#operator.id,
+                x => V1#fveh.x, y => V1#fveh.y}},
          put_veh(V1, Ctx)).
 
 %%--------------------------------------------------------------------

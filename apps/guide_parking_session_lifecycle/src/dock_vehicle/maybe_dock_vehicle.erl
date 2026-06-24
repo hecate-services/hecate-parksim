@@ -29,14 +29,16 @@ check_state(Cmd, State) ->
         true ->
             case parking_session_state:is_docked(State) of
                 true  -> {error, vehicle_already_docked};
-                false -> emit(Cmd)
+                false -> emit(Cmd, State)
             end
     end.
 
-emit(Cmd) ->
+emit(Cmd, State) ->
     {ok, Event} = vehicle_docked_v1:new(#{
         session_id => dock_vehicle_v1:get_session_id(Cmd),
         bay_id     => dock_vehicle_v1:get_bay_id(Cmd),
+        plate      => parking_session_state:plate(State),
+        lot_id     => parking_session_state:lot_id(State),
         docked_at  => coalesce(dock_vehicle_v1:get_docked_at(Cmd), iso8601_now())
     }),
     {ok, [Event]}.

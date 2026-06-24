@@ -21,7 +21,7 @@ handle(Cmd, State) ->
         ok ->
             case can_service(State) of
                 false -> {error, vehicle_not_docked};
-                true  -> emit(Cmd)
+                true  -> emit(Cmd, State)
             end;
         {error, _} = Err -> Err
     end.
@@ -29,7 +29,7 @@ handle(Cmd, State) ->
 can_service(State) ->
     vehicle_state:is_docked(State) orelse vehicle_state:is_servicing(State).
 
-emit(Cmd) ->
+emit(Cmd, State) ->
     Kind = service_vehicle_v1:get_kind(Cmd),
     %% A charge restores the battery; default to a full top-up if the caller
     %% didn't specify a level. clean/maintain leave the battery alone.
@@ -39,6 +39,7 @@ emit(Cmd) ->
     end,
     {ok, Ev} = vehicle_serviced_v1:new(#{
         vehicle_id   => service_vehicle_v1:get_vehicle_id(Cmd),
+        company_id   => vehicle_state:company_id(State),
         service_kind => Kind,
         battery_pct  => Battery,
         serviced_at  => coalesce(service_vehicle_v1:get_serviced_at(Cmd),

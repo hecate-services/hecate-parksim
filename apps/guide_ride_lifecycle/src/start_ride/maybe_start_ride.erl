@@ -17,14 +17,15 @@ handle(Cmd, State) ->
         ok ->
             case ride_state:is_assigned(State) of
                 false -> {error, ride_not_assigned};
-                true  -> emit(Cmd)
+                true  -> emit(Cmd, State)
             end;
         {error, _} = Err -> Err
     end.
 
-emit(Cmd) ->
+emit(Cmd, State) ->
     {ok, Ev} = ride_started_v1:new(#{
         ride_id    => start_ride_v1:get_ride_id(Cmd),
+        vehicle_id => ride_state:vehicle_id(State),
         started_at => coalesce(start_ride_v1:get_started_at(Cmd), iso8601_now())
     }),
     {ok, [ride_started_v1:to_map(Ev)]}.

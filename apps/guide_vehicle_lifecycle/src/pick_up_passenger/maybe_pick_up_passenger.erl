@@ -19,14 +19,16 @@ handle(Cmd, State) ->
         ok ->
             case vehicle_state:is_dispatched(State) of
                 false -> {error, vehicle_not_dispatched};
-                true  -> emit(Cmd)
+                true  -> emit(Cmd, State)
             end;
         {error, _} = Err -> Err
     end.
 
-emit(Cmd) ->
+emit(Cmd, State) ->
     {ok, Ev} = passenger_picked_up_v1:new(#{
         vehicle_id   => pick_up_passenger_v1:get_vehicle_id(Cmd),
+        company_id   => vehicle_state:company_id(State),
+        ride_id      => vehicle_state:ride_id(State),
         x          => pick_up_passenger_v1:get_x(Cmd),
         y          => pick_up_passenger_v1:get_y(Cmd),
         picked_up_at => coalesce(pick_up_passenger_v1:get_picked_up_at(Cmd),
