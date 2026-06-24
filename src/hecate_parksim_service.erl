@@ -15,7 +15,7 @@
 -include_lib("reckon_db/include/reckon_db.hrl").
 
 -export([info/0, start/1, stop/1, health/0, capabilities/0, identity_spec/0]).
--export([store_id/0, data_dir/0]).
+-export([store_id/0, data_dir/0, store_indexes/0]).
 -export([tenant_id/0]).
 
 info() ->
@@ -50,15 +50,7 @@ ensure_store() ->
         store_id = store_id(),
         data_dir = data_dir(),
         mode     = single,
-        indexes  = [tags, event_type,
-                    {payload, <<"plate">>},
-                    {payload, <<"lot_id">>},
-                    {payload, <<"ride_id">>},
-                    {payload, <<"vehicle_id">>},
-                    {payload, <<"company_id">>},
-                    {payload, <<"bay_id">>},
-                    {payload_hash, [<<"lot_id">>, <<"plate">>]},
-                    {payload_hash, [<<"facility_id">>, <<"bay_id">>]}]
+        indexes  = store_indexes()
     },
     case reckon_db_sup:start_store(Config) of
         {ok, _Pid}                    -> ok;
@@ -102,6 +94,22 @@ data_dir() ->
         false -> "/var/lib/hecate-parksim";
         Dir   -> Dir
     end.
+
+%% @doc The store's declared secondary indexes. hecate_om:boot/1 reads
+%% this (the optional store_indexes/0 callback) and installs them on the
+%% auto-started store, so CCC payload queries work. Single source of
+%% truth — ensure_store/0 references it too.
+-spec store_indexes() -> [term()].
+store_indexes() ->
+    [tags, event_type,
+     {payload, <<"plate">>},
+     {payload, <<"lot_id">>},
+     {payload, <<"ride_id">>},
+     {payload, <<"vehicle_id">>},
+     {payload, <<"company_id">>},
+     {payload, <<"bay_id">>},
+     {payload_hash, [<<"lot_id">>, <<"plate">>]},
+     {payload_hash, [<<"facility_id">>, <<"bay_id">>]}].
 
 %%--------------------------------------------------------------------
 %% Tenant identity
