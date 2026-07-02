@@ -12,10 +12,8 @@
 -module(hecate_parksim_service).
 -behaviour(hecate_om_service).
 
--include_lib("reckon_db/include/reckon_db.hrl").
-
 -export([info/0, start/1, stop/1, health/0, capabilities/0, identity_spec/0]).
--export([store_id/0, data_dir/0, store_indexes/0]).
+-export([store_id/0, data_dir/0, store_indexes/0, store_mode/0]).
 -export([tenant_id/0]).
 -export([is_leader/0]).
 
@@ -27,37 +25,11 @@ info() ->
     }.
 
 start(_Opts) ->
-    %% hecate_om 0.2.0 doesn't yet auto-wire store_id/0 callbacks; do
-    %% it explicitly here. When hecate_om >= 0.3.0 lands with the
-    %% hecate_om_store helper, this block goes away.
-    {ok, SupPid} = hecate_parksim_sup:start_link(),
-    ok = ensure_store(),
-    ok = ensure_subscription(),
-    {ok, SupPid}.
-
-%% Bridge the event store to evoq projections/handlers (catch-up +
-%% live $all). Started after the store is up; the PRJ app's projection
-%% has already registered its event types (it boots first — see the
-%% project_parking_sessions dep in hecate_parksim.app.src).
-ensure_subscription() ->
-    case evoq_store_subscription:start_link(store_id()) of
-        {ok, _Pid}                    -> ok;
-        {error, {already_started, _}} -> ok;
-        {error, Reason}               -> error({store_subscription_failed, Reason})
-    end.
-
-ensure_store() ->
-    Config = #store_config{
-        store_id = store_id(),
-        data_dir = data_dir(),
-        mode     = cluster,
-        indexes  = store_indexes()
-    },
-    case reckon_db_sup:start_store(Config) of
-        {ok, _Pid}                    -> ok;
-        {error, {already_started, _}} -> ok;
-        {error, Reason}               -> error({store_start_failed, Reason})
-    end.
+    %% hecate_om:boot/1 auto-starts the store (in cluster mode, per
+    %% store_mode/0) and the evoq $all subscription from our store_id/0 +
+    %% data_dir/0 + store_indexes/0 + store_mode/0 callbacks. We only
+    %% start our own supervision tree here.
+    hecate_parksim_sup:start_link().
 
 stop(_State) ->
     ok.
@@ -86,6 +58,13 @@ identity_spec() ->
 -spec store_id() -> atom().
 store_id() ->
     list_to_atom("parksim_" ++ tenant_id() ++ "_store").
+
+%% @doc Run the store as a Ra cluster: each tenant store is replicated
+%% across the (3) beam nodes that start it, so it survives a node loss.
+%% Read by hecate_om:boot/1 (optional store_mode/0 callback).
+-spec store_mode() -> cluster.
+store_mode() ->
+    cluster.
 
 %% @doc Filesystem root for the store's on-disk state. reckon_db
 %% namespaces by store_id under this root.
