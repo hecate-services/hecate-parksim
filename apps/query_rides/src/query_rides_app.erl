@@ -1,12 +1,15 @@
 %%% @doc query_rides OTP application + cowboy listener.
 %%%
-%%% Listens on its own port (parking 8473, fleet 8474, rides 8475).
+%%% Binds HTTP_PORT + 2 (main cowboy = base, fleet = base+1, rides =
+%%% base+2), so a container's three listeners are distinct and 3
+%%% co-located single-tenant containers on one beam node (host networking)
+%%% never collide. Dev fallback base is 8473 (=> rides 8475).
 -module(query_rides_app).
 -behaviour(application).
 
 -export([start/2, stop/1]).
 
--define(PORT, 8475).
+-define(PORT_OFFSET, 2).
 
 start(_StartType, _StartArgs) ->
     Dispatch = cowboy_router:compile([
@@ -19,10 +22,19 @@ start(_StartType, _StartArgs) ->
         ]}
     ]),
     {ok, _} = cowboy:start_clear(query_rides_http,
-                                 [{port, ?PORT}],
+                                 [{port, port()}],
                                  #{env => #{dispatch => Dispatch}}),
     query_rides_sup:start_link().
 
 stop(_State) ->
     cowboy:stop_listener(query_rides_http),
     ok.
+
+%% HTTP_PORT base + this app's offset (see moduledoc).
+port() ->
+    Base = case os:getenv("HTTP_PORT") of
+               false -> 8473;
+               ""    -> 8473;
+               P     -> list_to_integer(P)
+           end,
+    Base + ?PORT_OFFSET.
