@@ -68,7 +68,7 @@ dispatch(Cmd) ->
         adapter     => reckon_evoq_adapter,
         consistency => eventual
     },
-    evoq_dispatcher:dispatch(EvoqCmd, Opts).
+    evoq_command_router:dispatch(EvoqCmd, Opts).
 
 %%--------------------------------------------------------------------
 %% Helpers

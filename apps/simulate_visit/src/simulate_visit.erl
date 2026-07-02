@@ -1,5 +1,5 @@
 %%% @doc One simulated parking visit. Dispatches the session events
-%%% directly via evoq_dispatcher to the tenant store.
+%%% directly via evoq_command_router to the tenant store.
 %%%
 %%% Physical lifecycle: enter -> dock (park in a bay) -> dwell -> then
 %%% either

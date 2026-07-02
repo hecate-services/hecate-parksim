@@ -1,7 +1,7 @@
 %%% @doc Domain supervisor for the ride-lifecycle CMD app.
 %%%
 %%% Desks (request_ride, assign_ride, start_ride, complete_ride, expire_ride)
-%%% are pure-function command paths dispatched via evoq_dispatcher — they own
+%%% are pure-function command paths dispatched via evoq_command_router — they own
 %%% no processes. Read-model projection lives in the project_rides PRJ app.
 -module(guide_ride_lifecycle_sup).
 -behaviour(supervisor).

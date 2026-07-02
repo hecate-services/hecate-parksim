@@ -2,7 +2,7 @@
 %%%
 %%% Desks (initiate_parking_session, dock_vehicle, undock_vehicle,
 %%% capture_payment, archive_parking_session) are pure-function command
-%%% paths dispatched via evoq_dispatcher — they own no processes.
+%%% paths dispatched via evoq_command_router — they own no processes.
 %%% Retention (snapshot/scavenge) moved to the project_parking_sessions
 %%% PRJ app, which drives it from the durable SQLite read model.
 -module(guide_parking_session_lifecycle_sup).

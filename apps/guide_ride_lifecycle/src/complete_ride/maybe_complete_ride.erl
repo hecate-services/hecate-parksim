@@ -47,7 +47,7 @@ dispatch(Cmd) ->
     Opts = #{store_id    => hecate_parksim_service:store_id(),
              adapter     => reckon_evoq_adapter,
              consistency => eventual},
-    evoq_dispatcher:dispatch(EvoqCmd, Opts).
+    evoq_command_router:dispatch(EvoqCmd, Opts).
 
 coalesce(undefined, Default) -> Default;
 coalesce(Value, _Default)    -> Value.
