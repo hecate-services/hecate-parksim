@@ -17,6 +17,7 @@
 -export([info/0, start/1, stop/1, health/0, capabilities/0, identity_spec/0]).
 -export([store_id/0, data_dir/0, store_indexes/0]).
 -export([tenant_id/0]).
+-export([is_leader/0]).
 
 info() ->
     #{
@@ -49,7 +50,7 @@ ensure_store() ->
     Config = #store_config{
         store_id = store_id(),
         data_dir = data_dir(),
-        mode     = single,
+        mode     = cluster,
         indexes  = store_indexes()
     },
     case reckon_db_sup:start_store(Config) of
@@ -123,3 +124,19 @@ tenant_id() ->
         ""    -> "demo";
         Id    -> Id
     end.
+
+%%--------------------------------------------------------------------
+%% Leadership (follow-the-leader)
+
+%% @doc Is this container the Ra leader of its tenant store?
+%%
+%% Every replica runs the full app, but the self-driven write/emit
+%% workers (arrivals, fleet, scavenge, mesh summaries) gate their tick
+%% on this so exactly one node — the leader — generates writes and
+%% publishes facts. On failover the new leader's already-running
+%% workers simply start acting; nothing migrates. Guarded: before the
+%% store's Ra cluster has a leader (early boot) this is false.
+-spec is_leader() -> boolean().
+is_leader() ->
+    try reckon_db_store_coordinator:is_leader(store_id())
+    catch _:_ -> false end.

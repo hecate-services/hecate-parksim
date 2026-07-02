@@ -25,7 +25,7 @@ init([]) ->
     {ok, {SupFlags, Children}}.
 
 cowboy_child() ->
-    Port = application:get_env(hecate_parksim, http_port, 8473),
+    Port = http_port(),
     Dispatch = cowboy_router:compile([
         {'_', [
             {"/health", hecate_om_health_handler, []},
@@ -45,3 +45,13 @@ cowboy_child() ->
       ]},
       restart => permanent, shutdown => 5000,
       type => worker, modules => [cowboy]}.
+
+%% Runtime HTTP port. With host networking, the 3 single-tenant
+%% containers on one beam node each need a distinct port, so HTTP_PORT
+%% is set per tenant in the deploy; falls back to the sys.config value.
+http_port() ->
+    case os:getenv("HTTP_PORT") of
+        false -> application:get_env(hecate_parksim, http_port, 8473);
+        ""    -> application:get_env(hecate_parksim, http_port, 8473);
+        P     -> list_to_integer(P)
+    end.

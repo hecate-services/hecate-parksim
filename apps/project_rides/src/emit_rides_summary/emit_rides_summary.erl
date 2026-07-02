@@ -34,7 +34,12 @@ init([]) ->
     {ok, #state{interval = Interval, company = Company, topic = Topic}}.
 
 handle_info(tick, #state{interval = Interval} = S) ->
-    _ = publish(S),
+    %% Follow-the-leader: only the store's Ra leader publishes the rides
+    %% summary fact, so the mesh sees one publisher per tenant, not three.
+    case hecate_parksim_service:is_leader() of
+        true  -> _ = publish(S);
+        false -> ok
+    end,
     erlang:send_after(Interval, self(), tick),
     {noreply, S};
 handle_info(_Msg, S) ->

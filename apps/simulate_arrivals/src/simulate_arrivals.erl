@@ -44,9 +44,18 @@ handle_call(_Msg, _From, State) -> {reply, ok, State}.
 handle_cast(_Msg, State)         -> {noreply, State}.
 
 handle_info(tick, State) ->
-    NewState = fire_one(State),
-    self() ! tick,
-    {noreply, NewState};
+    %% Follow-the-leader: only the Ra leader of the tenant store
+    %% generates arrivals. Followers re-check on a slow cadence
+    %% (no busy-loop) so failover activates near-instantly.
+    case hecate_parksim_service:is_leader() of
+        true ->
+            NewState = fire_one(State),
+            self() ! tick,
+            {noreply, NewState};
+        false ->
+            erlang:send_after(5000, self(), tick),
+            {noreply, State}
+    end;
 handle_info(_Other, State) ->
     {noreply, State}.
 

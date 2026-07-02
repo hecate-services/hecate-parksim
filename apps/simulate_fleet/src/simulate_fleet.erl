@@ -67,7 +67,14 @@ handle_cast(_Msg, S) -> {noreply, S}.
 
 handle_info(tick, #state{} = S0) ->
     erlang:send_after(S0#state.tick_ms, self(), tick),
-    {noreply, do_tick(S0)};
+    %% Follow-the-leader: only the store's Ra leader advances the fleet
+    %% and dispatches milestone commands. Followers keep ticking (to
+    %% re-check leadership) but do no work.
+    S1 = case hecate_parksim_service:is_leader() of
+             true  -> do_tick(S0);
+             false -> S0
+         end,
+    {noreply, S1};
 handle_info(_Msg, S) ->
     {noreply, S}.
 

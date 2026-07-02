@@ -40,7 +40,12 @@ handle_cast(sweep, St) -> do_sweep(St), {noreply, St};
 handle_cast(_Msg, St)  -> {noreply, St}.
 
 handle_info(sweep, #st{interval_ms = Ms} = St) ->
-    do_sweep(St),
+    %% Follow-the-leader: retention deletes are issued only by the store's
+    %% Ra leader, so the sweep runs once cluster-wide, not once per replica.
+    case hecate_parksim_service:is_leader() of
+        true  -> do_sweep(St);
+        false -> ok
+    end,
     erlang:send_after(Ms, self(), sweep),
     {noreply, St};
 handle_info(_Msg, St) -> {noreply, St}.
