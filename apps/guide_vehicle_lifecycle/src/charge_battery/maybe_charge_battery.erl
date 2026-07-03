@@ -11,6 +11,12 @@
 
 -export([handle/1, handle/2, dispatch/1]).
 
+%% Cost model: a full pack is ~60 kWh; energy runs ~30 cents/kWh. The
+%% charging cost is derived from how much the battery was topped up, so it
+%% varies per charge and is a real operator expense in the stream.
+-define(BATTERY_CAPACITY_KWH, 60).
+-define(CHARGE_CENTS_PER_KWH, 30).
+
 -spec handle(charge_battery_v1:t()) -> {ok, [map()]} | {error, term()}.
 handle(Cmd) -> handle(Cmd, vehicle_state:new(<<>>)).
 
@@ -30,15 +36,25 @@ can_charge(State) ->
     vehicle_state:is_docked(State) orelse vehicle_state:is_servicing(State).
 
 emit(Cmd, State) ->
-    Battery = coalesce(charge_battery_v1:get_battery_pct(Cmd), 100),
+    After  = coalesce(charge_battery_v1:get_battery_pct(Cmd), 100),
+    Before = num_or(vehicle_state:battery_pct(State), 0),
+    EnergyKwh = erlang:max(0, After - Before) / 100 * ?BATTERY_CAPACITY_KWH,
     {ok, Ev} = battery_charged_v1:new(#{
-        vehicle_id  => charge_battery_v1:get_vehicle_id(Cmd),
-        company_id  => vehicle_state:company_id(State),
-        battery_pct => Battery,
-        charged_at  => coalesce(charge_battery_v1:get_charged_at(Cmd),
-                                iso8601_now())
+        vehicle_id         => charge_battery_v1:get_vehicle_id(Cmd),
+        company_id         => vehicle_state:company_id(State),
+        battery_pct        => After,
+        battery_pct_before => Before,
+        energy_kwh         => round1(EnergyKwh),
+        charging_cents     => round(EnergyKwh * ?CHARGE_CENTS_PER_KWH),
+        charged_at         => coalesce(charge_battery_v1:get_charged_at(Cmd),
+                                       iso8601_now())
     }),
     {ok, [battery_charged_v1:to_map(Ev)]}.
+
+num_or(N, _) when is_number(N) -> N;
+num_or(_, Default)             -> Default.
+
+round1(F) -> round(F * 10) / 10.
 
 %%--------------------------------------------------------------------
 %% Dispatch wrapper

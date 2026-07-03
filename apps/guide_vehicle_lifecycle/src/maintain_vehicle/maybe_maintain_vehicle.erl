@@ -7,6 +7,9 @@
 
 -export([handle/1, handle/2, dispatch/1]).
 
+%% Scheduled maintenance is a flat operator expense (~EUR 45).
+-define(MAINTENANCE_CENTS, 4500).
+
 -spec handle(maintain_vehicle_v1:t()) -> {ok, [map()]} | {error, term()}.
 handle(Cmd) -> handle(Cmd, vehicle_state:new(<<>>)).
 
@@ -29,6 +32,7 @@ emit(Cmd, State) ->
     {ok, Ev} = vehicle_maintained_v1:new(#{
         vehicle_id    => maintain_vehicle_v1:get_vehicle_id(Cmd),
         company_id    => vehicle_state:company_id(State),
+        maintenance_cents => ?MAINTENANCE_CENTS,
         maintained_at => coalesce(maintain_vehicle_v1:get_maintained_at(Cmd),
                                   iso8601_now())
     }),

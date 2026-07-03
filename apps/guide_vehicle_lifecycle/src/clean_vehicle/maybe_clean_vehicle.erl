@@ -8,6 +8,9 @@
 
 -export([handle/1, handle/2, dispatch/1]).
 
+%% A clean is a flat operator expense (~EUR 8).
+-define(CLEANING_CENTS, 800).
+
 -spec handle(clean_vehicle_v1:t()) -> {ok, [map()]} | {error, term()}.
 handle(Cmd) -> handle(Cmd, vehicle_state:new(<<>>)).
 
@@ -30,6 +33,7 @@ emit(Cmd, State) ->
     {ok, Ev} = vehicle_cleaned_v1:new(#{
         vehicle_id => clean_vehicle_v1:get_vehicle_id(Cmd),
         company_id => vehicle_state:company_id(State),
+        cleaning_cents => ?CLEANING_CENTS,
         cleaned_at => coalesce(clean_vehicle_v1:get_cleaned_at(Cmd), iso8601_now())
     }),
     {ok, [vehicle_cleaned_v1:to_map(Ev)]}.
