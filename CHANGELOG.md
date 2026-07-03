@@ -4,6 +4,33 @@ All notable changes to **hecate-parksim-simulator** are documented here.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-07-03
+
+### Changed
+
+- Rebuild against **reckon_db 5.5.5**, which cures the store-cluster
+  split-brain on simultaneous cold boot (election over store-runners +
+  persistent coordinator reconcile). The fleet now forms clean N-member
+  clusters on its own; the external `converge-parksim.sh` becomes a
+  belt-and-suspenders repair rather than a requirement.
+
+### Added
+
+- **Distinct vehicle-service facts.** Split the parameterized
+  `vehicle_serviced_v1{kind}` into first-class events: `battery_charged_v1`
+  (new `charge_battery` slice), `vehicle_cleaned_v1` (`clean_vehicle`), and
+  `vehicle_maintained_v1` (`maintain_vehicle`); retired `service_vehicle` /
+  `vehicle_serviced`. The simulator now emits an event for every serviced
+  kind in a visit (queued kinds were previously silent).
+
+### Fixed
+
+- Parking DCB occupancy: `vehicle_exited_lot` now carries `lot_id` (was
+  asymmetric with `vehicle_entered_lot`); fixed orphan exits (conditional
+  entry vs. unconditional exit under contention with a fail-open caller now
+  only proceeds on a successful claim); widened the truncated per-plate
+  state read.
+
 ## [0.3.0] - 2026-06-24
 
 ### Added
