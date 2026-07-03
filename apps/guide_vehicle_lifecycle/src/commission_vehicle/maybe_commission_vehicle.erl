@@ -30,6 +30,8 @@ emit(Cmd) ->
     {ok, Ev} = vehicle_commissioned_v1:new(#{
         vehicle_id      => commission_vehicle_v1:get_vehicle_id(Cmd),
         company_id      => commission_vehicle_v1:get_company_id(Cmd),
+        model           => commission_vehicle_v1:get_model(Cmd),
+        home_facility_id => commission_vehicle_v1:get_home_facility_id(Cmd),
         battery_pct     => commission_vehicle_v1:get_battery_pct(Cmd),
         x             => commission_vehicle_v1:get_x(Cmd),
         y             => commission_vehicle_v1:get_y(Cmd),

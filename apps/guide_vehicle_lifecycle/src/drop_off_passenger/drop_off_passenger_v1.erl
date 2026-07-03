@@ -7,7 +7,7 @@
 -export([command_type/0]).
 -export([new/1, from_map/1, validate/1, to_map/1]).
 -export([stream_id/1]).
--export([get_vehicle_id/1, get_x/1, get_y/1, get_fare_cents/1,
+-export([get_vehicle_id/1, get_x/1, get_y/1, get_fare_cents/1, get_tip_cents/1, get_surge_multiplier/1, get_payment_method/1,
          get_dropped_off_at/1]).
 
 -record(drop_off_passenger_v1, {
@@ -15,6 +15,9 @@
     x            :: number() | undefined,
     y            :: number() | undefined,
     fare_cents     :: non_neg_integer() | undefined,
+    tip_cents      :: non_neg_integer() | undefined,
+    surge_multiplier :: number() | undefined,
+    payment_method :: binary() | undefined,
     dropped_off_at :: binary() | undefined
 }).
 
@@ -30,6 +33,9 @@ new(#{vehicle_id := Id} = P) ->
         x            = maps:get(x, P, undefined),
         y            = maps:get(y, P, undefined),
         fare_cents     = maps:get(fare_cents, P, 0),
+        tip_cents      = maps:get(tip_cents, P, 0),
+        surge_multiplier = maps:get(surge_multiplier, P, undefined),
+        payment_method = maps:get(payment_method, P, undefined),
         dropped_off_at = maps:get(dropped_off_at, P, undefined)
     }};
 new(_) -> {error, missing_aggregate_id}.
@@ -41,6 +47,9 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
         x            = maps:get(<<"x">>, M, undefined),
         y            = maps:get(<<"y">>, M, undefined),
         fare_cents     = maps:get(<<"fare_cents">>, M, 0),
+        tip_cents      = maps:get(<<"tip_cents">>, M, 0),
+        surge_multiplier = maps:get(<<"surge_multiplier">>, M, undefined),
+        payment_method = maps:get(<<"payment_method">>, M, undefined),
         dropped_off_at = maps:get(<<"dropped_off_at">>, M, undefined)
     }};
 from_map(#{vehicle_id := Id} = M) ->
@@ -49,6 +58,9 @@ from_map(#{vehicle_id := Id} = M) ->
         x            = maps:get(x, M, undefined),
         y            = maps:get(y, M, undefined),
         fare_cents     = maps:get(fare_cents, M, 0),
+        tip_cents      = maps:get(tip_cents, M, 0),
+        surge_multiplier = maps:get(surge_multiplier, M, undefined),
+        payment_method = maps:get(payment_method, M, undefined),
         dropped_off_at = maps:get(dropped_off_at, M, undefined)
     }};
 from_map(_) -> {error, missing_aggregate_id}.
@@ -64,6 +76,9 @@ to_map(#drop_off_passenger_v1{} = C) ->
       x            => C#drop_off_passenger_v1.x,
       y            => C#drop_off_passenger_v1.y,
       fare_cents     => C#drop_off_passenger_v1.fare_cents,
+      tip_cents      => C#drop_off_passenger_v1.tip_cents,
+      surge_multiplier => C#drop_off_passenger_v1.surge_multiplier,
+      payment_method => C#drop_off_passenger_v1.payment_method,
       dropped_off_at => C#drop_off_passenger_v1.dropped_off_at}.
 
 -spec stream_id(t()) -> binary().
@@ -73,4 +88,7 @@ get_vehicle_id(#drop_off_passenger_v1{vehicle_id = V})         -> V.
 get_x(#drop_off_passenger_v1{x = V})                       -> V.
 get_y(#drop_off_passenger_v1{y = V})                       -> V.
 get_fare_cents(#drop_off_passenger_v1{fare_cents = V})         -> V.
+get_tip_cents(#drop_off_passenger_v1{tip_cents = V})           -> V.
+get_surge_multiplier(#drop_off_passenger_v1{surge_multiplier = V}) -> V.
+get_payment_method(#drop_off_passenger_v1{payment_method = V}) -> V.
 get_dropped_off_at(#drop_off_passenger_v1{dropped_off_at = V}) -> V.

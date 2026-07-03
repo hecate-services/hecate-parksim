@@ -45,6 +45,9 @@ emit(Cmd, State) ->
         ride_id      => RideId,
         trip_id      => vehicle_state:trip_id(State),
         fare_cents => drop_off_passenger_v1:get_fare_cents(Cmd),
+        tip_cents    => drop_off_passenger_v1:get_tip_cents(Cmd),
+        surge_multiplier => drop_off_passenger_v1:get_surge_multiplier(Cmd),
+        payment_method => drop_off_passenger_v1:get_payment_method(Cmd),
         collected_at => At
     }),
     {ok, [passenger_dropped_off_v1:to_map(Dropped),
