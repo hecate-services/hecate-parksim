@@ -26,7 +26,7 @@
 
 -include_lib("reckon_gater/include/reckon_gater_types.hrl").
 
--export([claim_entry/4, release_entry/3]).
+-export([claim_entry/4, release_entry/4]).
 
 -define(ENTERED, <<"vehicle_entered_lot">>).
 -define(EXITED,  <<"vehicle_exited_lot">>).
@@ -46,11 +46,12 @@ claim_entry(StoreId, Plate, LotId, SessionId) ->
     do_claim(StoreId, Plate, LotId, SessionId, PlateTag, ?MAX_RETRIES).
 
 %% @doc Release the parking slot for the vehicle. Called after a session
-%% is archived. Always appends — no conflict possible on exit.
--spec release_entry(atom(), binary(), binary()) -> ok | {error, term()}.
-release_entry(StoreId, Plate, SessionId) ->
+%% is archived. Always appends — no conflict possible on exit. Carries the
+%% `lot_id' so the exit is symmetric with the entry (same identity).
+-spec release_entry(atom(), binary(), binary(), binary()) -> ok | {error, term()}.
+release_entry(StoreId, Plate, LotId, SessionId) ->
     PlateTag = plate_tag(Plate),
-    Event = exited_event(Plate, SessionId, PlateTag),
+    Event = exited_event(Plate, LotId, SessionId, PlateTag),
     %% {any_of, []} matches nothing — always appends (unconditional).
     case reckon_gater_api:append_if_no_tag_matches(StoreId, {any_of, []}, -1, [Event]) of
         {ok, _}         -> ok;
@@ -86,7 +87,14 @@ do_claim(StoreId, Plate, LotId, SessionId, PlateTag, Retries) ->
 %%   LastExitSeq = max DCB seq of vehicle_exited_lot events, or -1 if none
 %%   IsParked    = true when the highest-seq event is vehicle_entered_lot
 read_plate_state(StoreId, PlateTag) ->
-    case reckon_gater_api:read_by_tags(StoreId, [PlateTag], #{batch_size => 200}) of
+    %% Plates are drawn from a reused pool, so a plate's DCB history grows two
+    %% events per visit and is unbounded. read_by_tags has no backward/cursor
+    %% read, so a small batch truncates to the OLDEST events and mis-reads the
+    %% current park state (→ perpetually-failing conditional claims). Read a
+    %% wide window so the latest entry/exit is always in view. The real fix
+    %% (compaction / a lot-membership read model) is tracked in
+    %% DESIGN_PARKSIM_ENTITY_MODEL.md.
+    case reckon_gater_api:read_by_tags(StoreId, [PlateTag], #{batch_size => 100000}) of
         {ok, Events} ->
             DcbEvents = [E || #event{stream_id = <<"_dcb">>} = E <- Events],
             EnteredSeqs = [E#event.version || #event{event_type = ?ENTERED} = E <- DcbEvents],
@@ -107,10 +115,10 @@ entered_event(Plate, LotId, SessionId, PlateTag) ->
         tags       => [PlateTag]
     }.
 
-exited_event(Plate, SessionId, PlateTag) ->
+exited_event(Plate, LotId, SessionId, PlateTag) ->
     #{
         event_type => ?EXITED,
-        data       => #{plate => Plate, session_id => SessionId},
+        data       => #{plate => Plate, lot_id => LotId, session_id => SessionId},
         metadata   => #{},
         tags       => [PlateTag]
     }.
