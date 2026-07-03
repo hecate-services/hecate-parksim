@@ -101,12 +101,15 @@ apply_event(S, #{event_type := <<"battery_charged">>} = Ev) ->
         battery_pct   = g(battery_pct, Ev, 100),
         last_event_at = g(charged_at, Ev, S#vehicle_state.last_event_at)
     };
-apply_event(S, #{event_type := <<"vehicle_serviced">>} = Ev) ->
-    %% clean | maintain — a physical service that leaves the battery alone
-    %% (charging is now battery_charged).
+apply_event(S, #{event_type := <<"vehicle_cleaned">>} = Ev) ->
     (set_phase(S, ?VEH_SERVICING))#vehicle_state{
-        service_kind  = g(service_kind, Ev, undefined),
-        last_event_at = g(serviced_at, Ev, S#vehicle_state.last_event_at)
+        service_kind  = <<"clean">>,
+        last_event_at = g(cleaned_at, Ev, S#vehicle_state.last_event_at)
+    };
+apply_event(S, #{event_type := <<"vehicle_maintained">>} = Ev) ->
+    (set_phase(S, ?VEH_SERVICING))#vehicle_state{
+        service_kind  = <<"maintain">>,
+        last_event_at = g(maintained_at, Ev, S#vehicle_state.last_event_at)
     };
 apply_event(S, #{event_type := <<"vehicle_released">>} = Ev) ->
     %% Bay freed, back to cruising.

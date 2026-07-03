@@ -34,7 +34,7 @@ dock_payload()    -> #{vehicle_id => vid(), facility_id => <<"depot-centrum">>,
                        bay_id => <<"depot-centrum-bay-1">>,
                        x => 50.8810, y => 4.7005}.
 charge_payload()  -> #{vehicle_id => vid(), battery_pct => 100.0}.
-clean_payload()   -> #{vehicle_id => vid(), kind => <<"clean">>}.
+clean_payload()   -> #{vehicle_id => vid()}.
 release_payload() -> #{vehicle_id => vid()}.
 deplete_payload() -> #{vehicle_id => vid(), x => 50.88, y => 4.70}.
 
@@ -60,11 +60,12 @@ full_lifecycle_test() ->
               fun vehicle_state:is_returning/1},
         {dock_at_facility, dock_payload(), E(<<"vehicle_docked_at_facility">>),
               fun vehicle_state:is_docked/1},
-        %% Charge is its own fact now; a clean can follow in the same visit
-        %% (already-servicing precondition), both keeping the SERVICING phase.
+        %% Each service kind is its own fact now; a clean follows the charge
+        %% in the same visit (already-servicing precondition), both keeping
+        %% the SERVICING phase.
         {charge_battery, charge_payload(), E(<<"battery_charged">>),
               fun vehicle_state:is_servicing/1},
-        {service_vehicle, clean_payload(), E(<<"vehicle_serviced">>),
+        {clean_vehicle, clean_payload(), E(<<"vehicle_cleaned">>),
               fun vehicle_state:is_servicing/1},
         {release_vehicle, release_payload(), E(<<"vehicle_released">>),
               fun vehicle_state:is_cruising/1}

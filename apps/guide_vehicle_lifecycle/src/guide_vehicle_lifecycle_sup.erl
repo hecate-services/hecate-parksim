@@ -1,8 +1,9 @@
 %%% @doc Domain supervisor for the vehicle-lifecycle CMD app.
 %%%
 %%% Desks (commission_vehicle, dispatch_vehicle, pick_up_passenger,
-%%% drop_off_passenger, return_vehicle, dock_vehicle, service_vehicle,
-%%% release_vehicle, deplete_battery) are pure-function command paths
+%%% drop_off_passenger, return_vehicle, dock_at_facility, charge_battery,
+%%% clean_vehicle, maintain_vehicle, release_vehicle, deplete_battery) are
+%%% pure-function command paths
 %%% dispatched via evoq_command_router — they own no processes. Read-model
 %%% projection + retention live in the project_fleet PRJ app.
 -module(guide_vehicle_lifecycle_sup).

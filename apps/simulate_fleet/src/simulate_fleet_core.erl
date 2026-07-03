@@ -283,19 +283,10 @@ on_reach_facility(V, Ctx) ->
                          bay_id     => Bay, x => Fac#facility.x,
                          y          => Fac#facility.y,
                          company_id => (Core#core.operator)#operator.id}}, Ctx),
-    %% Charging is its own fact now (battery_charged); clean/maintain stay
-    %% on service_vehicle. Battery is the dominant return reason, so this is
-    %% where the bulk of charges are emitted.
-    OpId = (Core#core.operator)#operator.id,
-    ServiceEffect = case Kind of
-        <<"charge">> ->
-            {charge_battery, #{vehicle_id => V1#fveh.id,
-                               battery_pct => 100, company_id => OpId}};
-        _ ->
-            {service_vehicle, #{vehicle_id => V1#fveh.id, kind => Kind,
-                                company_id => OpId}}
-    end,
-    emit(V1, ServiceEffect, put_veh(V1, Ctx2)).
+    %% Each service kind is now its own fact (battery_charged / vehicle_cleaned
+    %% / vehicle_maintained). Emit the first kind here; queued kinds emit as
+    %% they start in maybe_finish_service.
+    emit(V1, service_effect(Kind, V1, Core), put_veh(V1, Ctx2)).
 
 %%--------------------------------------------------------------------
 %% Service completion + tow
@@ -308,11 +299,12 @@ maybe_finish_service(V, Ctx) ->
             V1 = apply_service(V#fveh.service_kind, V),
             case V1#fveh.service_queue of
                 [Next | Rest] ->
-                    %% Same visit, next overdue kind — stay in the bay.
+                    %% Same visit, next overdue kind — stay in the bay and
+                    %% emit its fact (each serviced kind is now its own event).
                     Dur = service_secs(Next, Core#core.params),
                     V2 = V1#fveh{service_kind = Next, service_queue = Rest,
                                  service_until = SimUnix + Dur},
-                    put_veh(V2, Ctx);
+                    emit(V2, service_effect(Next, V2, Core), put_veh(V2, Ctx));
                 [] ->
                     Core1 = free_bay(Core, V1#fveh.dest_facility),
                     V2 = V1#fveh{phase = cruising,
@@ -332,6 +324,17 @@ apply_service(<<"charge">>, V)   -> V#fveh{battery_pct = 100.0};
 apply_service(<<"clean">>, V)    -> V#fveh{cleanliness_pct = 100.0};
 apply_service(<<"maintain">>, V) -> V#fveh{km_since_maint = 0.0};
 apply_service(_, V)              -> V.
+
+%% Map a service kind to its command effect — one distinct fact per kind.
+service_effect(<<"charge">>, V, Core) ->
+    {charge_battery, #{vehicle_id => V#fveh.id, battery_pct => 100,
+                       company_id => op_id(Core)}};
+service_effect(<<"clean">>, V, Core) ->
+    {clean_vehicle, #{vehicle_id => V#fveh.id, company_id => op_id(Core)}};
+service_effect(<<"maintain">>, V, Core) ->
+    {maintain_vehicle, #{vehicle_id => V#fveh.id, company_id => op_id(Core)}}.
+
+op_id(Core) -> (Core#core.operator)#operator.id.
 
 %% A stranded vehicle is towed after `tow_secs'; the tow routes it to the
 %% nearest free facility (phase returning, so it docks+charges normally).
