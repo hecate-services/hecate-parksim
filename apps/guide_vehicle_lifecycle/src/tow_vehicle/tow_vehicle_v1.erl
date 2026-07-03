@@ -7,13 +7,14 @@
 -export([command_type/0]).
 -export([new/1, from_map/1, validate/1, to_map/1]).
 -export([stream_id/1]).
--export([get_vehicle_id/1, get_company_id/1, get_from_x/1, get_from_y/1,
+-export([get_vehicle_id/1, get_company_id/1, get_tow_truck_id/1, get_from_x/1, get_from_y/1,
          get_destination_facility_id/1, get_tow_distance_m/1, get_tow_cents/1,
          get_towed_at/1]).
 
 -record(tow_vehicle_v1, {
     vehicle_id              :: binary() | undefined,
     company_id              :: binary() | undefined,
+    tow_truck_id            :: binary() | undefined,
     from_x                  :: number() | undefined,
     from_y                  :: number() | undefined,
     destination_facility_id :: binary() | undefined,
@@ -41,6 +42,7 @@ from(Id, M) ->
     #tow_vehicle_v1{
         vehicle_id = Id,
         company_id = maps:get(company_id, M, undefined),
+        tow_truck_id = maps:get(tow_truck_id, M, undefined),
         from_x = maps:get(from_x, M, undefined),
         from_y = maps:get(from_y, M, undefined),
         destination_facility_id = maps:get(destination_facility_id, M, undefined),
@@ -52,6 +54,7 @@ from_bin(Id, M) ->
     #tow_vehicle_v1{
         vehicle_id = Id,
         company_id = maps:get(<<"company_id">>, M, undefined),
+        tow_truck_id = maps:get(<<"tow_truck_id">>, M, undefined),
         from_x = maps:get(<<"from_x">>, M, undefined),
         from_y = maps:get(<<"from_y">>, M, undefined),
         destination_facility_id = maps:get(<<"destination_facility_id">>, M, undefined),
@@ -68,6 +71,7 @@ to_map(#tow_vehicle_v1{} = C) ->
     #{command_type            => <<"tow_vehicle">>,
       vehicle_id              => C#tow_vehicle_v1.vehicle_id,
       company_id              => C#tow_vehicle_v1.company_id,
+      tow_truck_id            => C#tow_vehicle_v1.tow_truck_id,
       from_x                  => C#tow_vehicle_v1.from_x,
       from_y                  => C#tow_vehicle_v1.from_y,
       destination_facility_id => C#tow_vehicle_v1.destination_facility_id,
@@ -80,6 +84,7 @@ stream_id(#tow_vehicle_v1{vehicle_id = Id}) -> <<"vehicle-", Id/binary>>.
 
 get_vehicle_id(#tow_vehicle_v1{vehicle_id = V}) -> V.
 get_company_id(#tow_vehicle_v1{company_id = V}) -> V.
+get_tow_truck_id(#tow_vehicle_v1{tow_truck_id = V}) -> V.
 get_from_x(#tow_vehicle_v1{from_x = V}) -> V.
 get_from_y(#tow_vehicle_v1{from_y = V}) -> V.
 get_destination_facility_id(#tow_vehicle_v1{destination_facility_id = V}) -> V.

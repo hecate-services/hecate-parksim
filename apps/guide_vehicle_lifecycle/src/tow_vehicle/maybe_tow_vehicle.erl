@@ -27,6 +27,7 @@ emit(Cmd, State) ->
     {ok, Ev} = vehicle_towed_v1:new(#{
         vehicle_id              => tow_vehicle_v1:get_vehicle_id(Cmd),
         company_id              => vehicle_state:company_id(State),
+        tow_truck_id            => tow_vehicle_v1:get_tow_truck_id(Cmd),
         from_x                  => tow_vehicle_v1:get_from_x(Cmd),
         from_y                  => tow_vehicle_v1:get_from_y(Cmd),
         destination_facility_id => tow_vehicle_v1:get_destination_facility_id(Cmd),

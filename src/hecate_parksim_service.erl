@@ -89,6 +89,7 @@ store_indexes() ->
      {payload, <<"company_id">>},
      {payload, <<"session_id">>},
      {payload, <<"bay_id">>},
+     {payload, <<"tow_truck_id">>},
      {payload_hash, [<<"lot_id">>, <<"plate">>]},
      {payload_hash, [<<"facility_id">>, <<"bay_id">>]}].
 

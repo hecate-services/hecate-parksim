@@ -137,6 +137,8 @@ handler_for(clean_vehicle)       -> maybe_clean_vehicle;
 handler_for(maintain_vehicle)    -> maybe_maintain_vehicle;
 handler_for(release_vehicle)     -> maybe_release_vehicle;
 handler_for(deplete_battery)     -> maybe_deplete_battery;
+handler_for(request_tow)         -> maybe_request_tow;
+handler_for(dispatch_tow_truck)  -> maybe_dispatch_tow_truck;
 handler_for(tow_vehicle)         -> maybe_tow_vehicle;
 handler_for(request_ride)        -> maybe_request_ride;
 handler_for(assign_ride)         -> maybe_assign_ride;

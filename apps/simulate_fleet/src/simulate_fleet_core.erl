@@ -362,6 +362,19 @@ vehicle_model(Seed) ->
 %% nearest free facility (phase returning, so it docks+charges normally).
 maybe_tow(V, Ctx) ->
     #{sim := SimUnix, core := Core} = Ctx,
+    case V#fveh.tow_dispatched of
+        false ->
+            %% Tick after the request: a truck is assigned and heads out.
+            V1 = V#fveh{tow_dispatched = true},
+            emit(V1, {dispatch_tow_truck,
+                      #{vehicle_id => V1#fveh.id, company_id => op_id(Core),
+                        tow_truck_id => V1#fveh.tow_truck_id}},
+                 put_veh(V1, Ctx));
+        true ->
+            maybe_complete_tow(V, Ctx, SimUnix, Core)
+    end.
+
+maybe_complete_tow(V, Ctx, SimUnix, Core) ->
     case is_integer(V#fveh.tow_until) andalso SimUnix >= V#fveh.tow_until of
         false -> put_veh(V, Ctx);
         true  ->
@@ -380,6 +393,7 @@ maybe_tow(V, Ctx) ->
                     emit(V1, {tow_vehicle,
                               #{vehicle_id => V1#fveh.id,
                                 company_id => op_id(Core),
+                                tow_truck_id => V#fveh.tow_truck_id,
                                 from_x => V#fveh.x, from_y => V#fveh.y,
                                 destination_facility_id => FacId,
                                 tow_distance_m => round(TowDist),
@@ -392,12 +406,22 @@ deplete(V, Ctx) ->
     #{sim := SimUnix, core := Core} = Ctx,
     TowAt = SimUnix + maps:get(tow_secs, Core#core.params),
     V1 = V#fveh{phase = depleted, battery_pct = 0.0, leg = none, path = [],
-                tow_until = TowAt},
-    emit(V1, {deplete_battery,
-              #{vehicle_id => V1#fveh.id,
-                company_id => (Core#core.operator)#operator.id,
+                tow_until = TowAt, tow_truck_id = tow_truck_id(Core, V#fveh.id),
+                tow_dispatched = false},
+    %% Stranded: the depletion fact, then immediately a tow request (the
+    %% truck is dispatched next tick, and completes the tow on arrival).
+    Ctx1 = add_effect({deplete_battery,
+                       #{vehicle_id => V1#fveh.id, company_id => op_id(Core),
+                         x => V1#fveh.x, y => V1#fveh.y}}, Ctx),
+    emit(V1, {request_tow,
+              #{vehicle_id => V1#fveh.id, company_id => op_id(Core),
                 x => V1#fveh.x, y => V1#fveh.y}},
-         put_veh(V1, Ctx)).
+         put_veh(V1, Ctx1)).
+
+%% A small per-operator pool of rescue trucks (deterministic assignment).
+tow_truck_id(Core, VehId) ->
+    N = 1 + (erlang:phash2({towtruck, VehId}) rem 3),
+    <<(op_id(Core))/binary, "-towtruck-", (integer_to_binary(N))/binary>>.
 
 %%--------------------------------------------------------------------
 %% Bays + facility selection

@@ -62,5 +62,7 @@
     dest_bay      :: binary() | undefined,
     service_kind  :: binary() | undefined,
     service_until :: integer() | undefined,  %% sim unix when service completes
-    tow_until     :: integer() | undefined   %% sim unix when a stranded tow lands
+    tow_until     :: integer() | undefined,  %% sim unix when a stranded tow lands
+    tow_truck_id  :: binary() | undefined,   %% assigned rescue truck
+    tow_dispatched = false :: boolean()      %% has the truck been dispatched yet
 }).
