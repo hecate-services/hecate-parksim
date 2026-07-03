@@ -40,6 +40,7 @@ emit(Cmd, State) ->
         session_id  => undock_vehicle_v1:get_session_id(Cmd),
         plate       => parking_session_state:plate(State),
         lot_id      => parking_session_state:lot_id(State),
+        bay_id      => parking_session_state:bay_id(State),
         undocked_at => coalesce(undock_vehicle_v1:get_undocked_at(Cmd), iso8601_now())
     }),
     {ok, [Event]}.

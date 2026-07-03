@@ -25,6 +25,7 @@ handle(Cmd, State) ->
 emit(Cmd, State) ->
     {ok, Ev} = ride_completed_v1:new(#{
         ride_id      => complete_ride_v1:get_ride_id(Cmd),
+        company_id   => ride_state:company_id(State),
         vehicle_id   => ride_state:vehicle_id(State),
         fare_cents   => complete_ride_v1:get_fare_cents(Cmd),
         completed_at => coalesce(complete_ride_v1:get_completed_at(Cmd), iso8601_now())

@@ -17,14 +17,15 @@ handle(Cmd, State) ->
         ok ->
             case ride_state:is_requested(State) of
                 false -> {error, ride_not_requested};
-                true  -> emit(Cmd)
+                true  -> emit(Cmd, State)
             end;
         {error, _} = Err -> Err
     end.
 
-emit(Cmd) ->
+emit(Cmd, State) ->
     {ok, Ev} = ride_expired_v1:new(#{
         ride_id    => expire_ride_v1:get_ride_id(Cmd),
+        company_id=> ride_state:company_id(State),
         expired_at => coalesce(expire_ride_v1:get_expired_at(Cmd), iso8601_now())
     }),
     {ok, [ride_expired_v1:to_map(Ev)]}.

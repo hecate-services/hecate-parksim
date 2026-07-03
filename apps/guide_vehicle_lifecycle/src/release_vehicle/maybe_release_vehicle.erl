@@ -36,6 +36,8 @@ emit(Cmd, State) ->
     {ok, Ev} = vehicle_released_v1:new(#{
         vehicle_id  => release_vehicle_v1:get_vehicle_id(Cmd),
         company_id  => vehicle_state:company_id(State),
+        facility_id => vehicle_state:facility_id(State),
+        bay_id      => vehicle_state:bay_id(State),
         released_at => coalesce(release_vehicle_v1:get_released_at(Cmd),
                                 iso8601_now())
     }),
