@@ -347,6 +347,8 @@ op_id(Core) -> (Core#core.operator)#operator.id.
 %% reproducible): a tip as a fraction of the fare, a mostly-high rating, a
 %% light surge multiplier, a payment method, and a vehicle model.
 tip_cents(Fare) -> round(Fare * 0.15).
+%% A tow is a base call-out (~EUR 50) plus ~EUR 2/km.
+tow_cents(DistM) -> 5000 + round(DistM / 1000 * 200).
 rating(Seed)    -> 4 + (erlang:phash2({rating, Seed}) rem 2).          %% 4 or 5
 surge_mult(Seed) ->
     element(1 + (erlang:phash2({surge, Seed}) rem 3), {1.0, 1.2, 1.5}).
@@ -367,15 +369,21 @@ maybe_tow(V, Ctx) ->
                 none -> put_veh(V, Ctx);
                 #facility{id = FacId} = Fac ->
                     Route = maps:get(route, Ctx),
-                    {Path, _D} = Route({V#fveh.x, V#fveh.y},
-                                       {Fac#facility.x, Fac#facility.y}),
+                    {Path, TowDist} = Route({V#fveh.x, V#fveh.y},
+                                            {Fac#facility.x, Fac#facility.y}),
                     Core1 = take_bay(Core, FacId),
                     V1 = V#fveh{phase = returning, leg = to_facility, path = Path,
                                 dest_facility = FacId, tow_until = undefined,
                                 battery_pct = 5.0},  %% tow gives a limp charge
-                    emit(V1, {return_vehicle,
-                              #{vehicle_id => V1#fveh.id, facility_id => FacId,
-                                company_id => (Core#core.operator)#operator.id}},
+                    %% The rescue is its own fact (with its cost); the vehicle
+                    %% is now RETURNING to the facility (docks + charges there).
+                    emit(V1, {tow_vehicle,
+                              #{vehicle_id => V1#fveh.id,
+                                company_id => op_id(Core),
+                                from_x => V#fveh.x, from_y => V#fveh.y,
+                                destination_facility_id => FacId,
+                                tow_distance_m => round(TowDist),
+                                tow_cents => tow_cents(TowDist)}},
                          put_veh(V1, Ctx#{core => Core1}))
             end
     end.

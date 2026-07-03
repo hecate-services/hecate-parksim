@@ -119,6 +119,13 @@ apply_event(S, #{event_type := <<"vehicle_released">>} = Ev) ->
         service_kind  = undefined,
         last_event_at = g(released_at, Ev, S#vehicle_state.last_event_at)
     };
+apply_event(S, #{event_type := <<"vehicle_towed">>} = Ev) ->
+    (set_phase(S, ?VEH_RETURNING))#vehicle_state{
+        facility_id   = g(destination_facility_id, Ev, S#vehicle_state.facility_id),
+        x             = g(from_x, Ev, S#vehicle_state.x),
+        y             = g(from_y, Ev, S#vehicle_state.y),
+        last_event_at = g(towed_at, Ev, S#vehicle_state.last_event_at)
+    };
 apply_event(S, #{event_type := <<"battery_depleted">>} = Ev) ->
     (set_phase(S, ?VEH_DEPLETED))#vehicle_state{
         battery_pct   = 0,

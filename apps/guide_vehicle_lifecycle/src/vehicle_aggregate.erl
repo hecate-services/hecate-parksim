@@ -67,6 +67,8 @@ execute(State, #{command_type := <<"release_vehicle">>} = P) ->
     route(release_vehicle_v1, maybe_release_vehicle, State, P);
 execute(State, #{command_type := <<"deplete_battery">>} = P) ->
     route(deplete_battery_v1, maybe_deplete_battery, State, P);
+execute(State, #{command_type := <<"tow_vehicle">>} = P) ->
+    route(tow_vehicle_v1, maybe_tow_vehicle, State, P);
 execute(_State, #{command_type := Other}) ->
     {error, {unhandled_command, Other}};
 execute(_State, _Payload) ->
