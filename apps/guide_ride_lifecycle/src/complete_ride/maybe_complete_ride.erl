@@ -28,6 +28,8 @@ emit(Cmd, State) ->
         company_id   => ride_state:company_id(State),
         vehicle_id   => ride_state:vehicle_id(State),
         fare_cents   => complete_ride_v1:get_fare_cents(Cmd),
+        tip_cents    => complete_ride_v1:get_tip_cents(Cmd),
+        rating       => complete_ride_v1:get_rating(Cmd),
         completed_at => coalesce(complete_ride_v1:get_completed_at(Cmd), iso8601_now())
     }),
     {ok, [ride_completed_v1:to_map(Ev)]}.

@@ -53,6 +53,8 @@ new(#operator{fleet_size = N, home = HomeId} = Op, Params, Rng) ->
     Effects = [{commission_vehicle,
                 #{vehicle_id  => V#fveh.id,
                   company_id  => Op#operator.id,
+                  model       => vehicle_model(V#fveh.id),
+                  home_facility_id => Op#operator.home,
                   battery_pct => V#fveh.battery_pct,
                   x => V#fveh.x, y => V#fveh.y}}
                || V <- Vehs0],
@@ -251,13 +253,18 @@ on_reach_dropoff(V, Ctx) ->
     Fare = fare_cents(V#fveh.trip_m, Core#core.params),
     Dirt = maps:get(clean_per_trip, Core#core.params, 0),
     Ctx1 = add_effect({complete_ride,
-                       #{ride_id => V#fveh.ride_id, fare_cents => Fare}}, Ctx),
+                       #{ride_id => V#fveh.ride_id, fare_cents => Fare,
+                         tip_cents => tip_cents(Fare),
+                         rating => rating(V#fveh.ride_id)}}, Ctx),
     V1 = V#fveh{phase = cruising, leg = none, path = [],
                 cleanliness_pct = max(0.0, V#fveh.cleanliness_pct - Dirt),
                 trip_id = undefined, ride_id = undefined,
                 pickup = undefined, dropoff = undefined},
     emit(V1, {drop_off_passenger,
               #{vehicle_id => V1#fveh.id, fare_cents => Fare,
+                tip_cents  => tip_cents(Fare),
+                surge_multiplier => surge_mult(V1#fveh.id),
+                payment_method   => pay_method(V#fveh.ride_id),
                 ride_id    => V#fveh.ride_id,
                 company_id => (Core#core.operator)#operator.id,
                 x => V1#fveh.x, y => V1#fveh.y}},
@@ -335,6 +342,19 @@ service_effect(<<"maintain">>, V, Core) ->
     {maintain_vehicle, #{vehicle_id => V#fveh.id, company_id => op_id(Core)}}.
 
 op_id(Core) -> (Core#core.operator)#operator.id.
+
+%% Deterministic demo enrichments (phash-derived so the sim stays
+%% reproducible): a tip as a fraction of the fare, a mostly-high rating, a
+%% light surge multiplier, a payment method, and a vehicle model.
+tip_cents(Fare) -> round(Fare * 0.15).
+rating(Seed)    -> 4 + (erlang:phash2({rating, Seed}) rem 2).          %% 4 or 5
+surge_mult(Seed) ->
+    element(1 + (erlang:phash2({surge, Seed}) rem 3), {1.0, 1.2, 1.5}).
+pay_method(Seed) ->
+    case erlang:phash2({pay, Seed}) rem 4 of 0 -> <<"wallet">>; _ -> <<"card">> end.
+vehicle_model(Seed) ->
+    element(1 + (erlang:phash2({model, Seed}) rem 3),
+            {<<"robotaxi-mk2">>, <<"robotaxi-mk3">>, <<"robovan-x1">>}).
 
 %% A stranded vehicle is towed after `tow_secs'; the tow routes it to the
 %% nearest free facility (phase returning, so it docks+charges normally).
