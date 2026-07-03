@@ -115,13 +115,13 @@ or aggregate by dimension without scanning:
 ## Data sources (all cheap)
 
 Everything is already in sim state or trivially derived:
-- `x`, `y`, `battery_pct`, `trip_m`, `trip_id`, `ride_id` — the `fveh` record.
-- costs — from the battery delta (`charging_cents`, `energy_kwh`), service
+- `x`, `y`, `battery_pct`, `trip_m`, `trip_id`, `ride_id`: the `fveh` record.
+- costs: from the battery delta (`charging_cents`, `energy_kwh`), service
   durations (`cleaning_cents`, `maintenance_cents`), tow distance (`tow_cents`).
-- `tip_cents` — a jittered fraction of `fare_cents`.
+- `tip_cents`: a jittered fraction of `fare_cents`.
 - `surge_multiplier`, `rating`, `requested_via`, `vehicle_class`, `zone`,
-  `model` — sim picks from small distributions.
-- `wait_s`/`waited_s`, durations — request time vs milestone time.
+  `model`: sim picks from small distributions.
+- `wait_s`/`waited_s`, durations: request time vs milestone time.
 
 ## Implementation order
 
