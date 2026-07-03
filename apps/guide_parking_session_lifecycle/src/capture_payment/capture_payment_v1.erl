@@ -5,11 +5,11 @@
 -export([command_type/0]).
 -export([new/1, from_map/1, validate/1, to_map/1]).
 -export([stream_id/1]).
--export([get_session_id/1, get_amount_cents/1, get_paid_at/1]).
+-export([get_session_id/1, get_fee_cents/1, get_paid_at/1]).
 
 -record(capture_payment_v1, {
     session_id   :: binary() | undefined,
-    amount_cents :: non_neg_integer() | undefined,
+    fee_cents :: non_neg_integer() | undefined,
     paid_at      :: binary() | undefined
 }).
 
@@ -22,7 +22,7 @@ command_type() -> capture_payment_v1.
 new(#{session_id := Id} = Params) ->
     {ok, #capture_payment_v1{
         session_id   = Id,
-        amount_cents = maps:get(amount_cents, Params, undefined),
+        fee_cents = maps:get(fee_cents, Params, undefined),
         paid_at      = maps:get(paid_at,      Params, undefined)
     }};
 new(_) ->
@@ -32,13 +32,13 @@ new(_) ->
 from_map(#{<<"session_id">> := Id} = Map) ->
     {ok, #capture_payment_v1{
         session_id   = Id,
-        amount_cents = maps:get(<<"amount_cents">>, Map, undefined),
+        fee_cents = maps:get(<<"fee_cents">>, Map, undefined),
         paid_at      = maps:get(<<"paid_at">>,      Map, undefined)
     }};
 from_map(#{session_id := Id} = Map) ->
     {ok, #capture_payment_v1{
         session_id   = Id,
-        amount_cents = maps:get(amount_cents, Map, undefined),
+        fee_cents = maps:get(fee_cents, Map, undefined),
         paid_at      = maps:get(paid_at,      Map, undefined)
     }};
 from_map(_) ->
@@ -46,9 +46,9 @@ from_map(_) ->
 
 -spec validate(t()) -> ok | {error, term()}.
 validate(#capture_payment_v1{session_id   = undefined}) -> {error, missing_aggregate_id};
-validate(#capture_payment_v1{amount_cents = undefined}) -> {error, missing_amount_cents};
-validate(#capture_payment_v1{amount_cents = N}) when not is_integer(N) -> {error, invalid_amount_cents};
-validate(#capture_payment_v1{amount_cents = N}) when N < 0 -> {error, invalid_amount_cents};
+validate(#capture_payment_v1{fee_cents = undefined}) -> {error, missing_fee_cents};
+validate(#capture_payment_v1{fee_cents = N}) when not is_integer(N) -> {error, invalid_fee_cents};
+validate(#capture_payment_v1{fee_cents = N}) when N < 0 -> {error, invalid_fee_cents};
 validate(_) -> ok.
 
 -spec to_map(t()) -> map().
@@ -56,7 +56,7 @@ to_map(#capture_payment_v1{} = Cmd) ->
     #{
         command_type => <<"capture_payment">>,
         session_id   => Cmd#capture_payment_v1.session_id,
-        amount_cents => Cmd#capture_payment_v1.amount_cents,
+        fee_cents => Cmd#capture_payment_v1.fee_cents,
         paid_at      => Cmd#capture_payment_v1.paid_at
     }.
 
@@ -65,5 +65,5 @@ stream_id(#capture_payment_v1{session_id = Id}) ->
     <<"parking-session-", Id/binary>>.
 
 get_session_id(#capture_payment_v1{session_id = V})     -> V.
-get_amount_cents(#capture_payment_v1{amount_cents = V}) -> V.
+get_fee_cents(#capture_payment_v1{fee_cents = V}) -> V.
 get_paid_at(#capture_payment_v1{paid_at = V})           -> V.

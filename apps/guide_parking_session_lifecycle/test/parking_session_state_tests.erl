@@ -21,7 +21,7 @@ initiated_ev() ->
 paid_ev() ->
     #{event_type   => <<"payment_captured">>,
       session_id   => <<"sess-1">>,
-      amount_cents => 500,
+      fee_cents => 500,
       paid_at      => <<"2026-05-26T09:55:00Z">>}.
 
 archived_ev() ->
@@ -60,7 +60,7 @@ apply_paid_sets_amount_test() ->
     ?assert(parking_session_state:is_initiated(S)),
     ?assert(parking_session_state:is_paid(S)),
     ?assertNot(parking_session_state:is_archived(S)),
-    ?assertEqual(500, parking_session_state:amount_cents(S)),
+    ?assertEqual(500, parking_session_state:fee_cents(S)),
     ?assertEqual(<<"2026-05-26T09:55:00Z">>, parking_session_state:paid_at(S)).
 
 %%--------------------------------------------------------------------

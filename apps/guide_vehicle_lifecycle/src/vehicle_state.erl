@@ -77,7 +77,7 @@ apply_event(S, #{event_type := <<"passenger_dropped_off">>} = Ev) ->
 apply_event(S, #{event_type := <<"fare_collected">>} = Ev) ->
     %% No phase change — rides alongside the drop-off. Just bank the fare.
     S#vehicle_state{
-        fares_cents   = S#vehicle_state.fares_cents + g(amount_cents, Ev, 0),
+        fares_cents   = S#vehicle_state.fares_cents + g(fare_cents, Ev, 0),
         last_event_at = g(collected_at, Ev, S#vehicle_state.last_event_at)
     };
 apply_event(S, #{event_type := <<"vehicle_returning">>} = Ev) ->

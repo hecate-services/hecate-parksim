@@ -39,7 +39,7 @@ emit(Cmd, State) ->
     end,
     {ok, Event} = payment_captured_v1:new(#{
         session_id     => capture_payment_v1:get_session_id(Cmd),
-        amount_cents   => capture_payment_v1:get_amount_cents(Cmd),
+        fee_cents   => capture_payment_v1:get_fee_cents(Cmd),
         plate          => parking_session_state:plate(State),
         lot_id         => parking_session_state:lot_id(State),
         payment_method => PaymentMethod,

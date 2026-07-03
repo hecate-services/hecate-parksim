@@ -30,7 +30,7 @@
 
 -define(SELECT_COLS,
     "session_id, status, lot_id, bay_id, plate, card_id, permit_ref, "
-    "entered_at, docked_at, undocked_at, paid_at, archived_at, amount_cents").
+    "entered_at, docked_at, undocked_at, paid_at, archived_at, fee_cents").
 -define(SELECT_ONE,    "SELECT " ?SELECT_COLS " FROM sessions WHERE session_id = ?1;").
 -define(SELECT_RECENT, "SELECT " ?SELECT_COLS " FROM sessions ORDER BY entered_at DESC LIMIT ?1;").
 
@@ -160,7 +160,7 @@ upsert(Db, #{event_type := <<"vehicle_undocked">>} = E) ->
     ins(Db, sid(E), ?SESSION_UNDOCKED, [{undocked_at, g(undocked_at, E)}]);
 upsert(Db, #{event_type := <<"payment_captured">>} = E) ->
     ins(Db, sid(E), ?SESSION_PAID,
-        [{amount_cents, g(amount_cents, E)}, {paid_at, g(paid_at, E)}]);
+        [{fee_cents, g(fee_cents, E)}, {paid_at, g(paid_at, E)}]);
 upsert(Db, #{event_type := <<"parking_session_archived">>} = E) ->
     ins(Db, sid(E), ?SESSION_ARCHIVED, [{archived_at, g(archived_at, E)}]);
 upsert(_Db, _Other) -> ok.
@@ -191,7 +191,7 @@ build_overview(Db) ->
       paid          => One(["SELECT count(*) FROM sessions WHERE status & ", i(?SESSION_PAID), ";"]),
       archived      => One(["SELECT count(*) FROM sessions WHERE status & ", i(?SESSION_ARCHIVED), ";"]),
       in_progress   => One(["SELECT count(*) FROM sessions WHERE (status & ", i(?SESSION_ARCHIVED), ") = 0;"]),
-      revenue_cents => One("SELECT coalesce(sum(amount_cents),0) FROM sessions;"),
+      revenue_cents => One("SELECT coalesce(sum(fee_cents),0) FROM sessions;"),
       by_lot        => [#{lot_id => L, sessions => N}
                         || [L, N] <- esqlite3:q(Db,
                              "SELECT coalesce(lot_id,'?'), count(*) FROM sessions GROUP BY lot_id ORDER BY 2 DESC;")]}.
@@ -214,7 +214,7 @@ migrate(Db) ->
         "  status       INTEGER NOT NULL DEFAULT 0,"
         "  lot_id       TEXT, bay_id TEXT, plate TEXT, card_id TEXT, permit_ref TEXT,"
         "  entered_at   TEXT, docked_at TEXT, undocked_at TEXT, paid_at TEXT, archived_at TEXT,"
-        "  amount_cents INTEGER,"
+        "  fee_cents INTEGER,"
         "  scavenged    INTEGER NOT NULL DEFAULT 0"
         ");").
 
@@ -242,4 +242,4 @@ row_to_session({error, _} = E) -> E.
 as_session([Sid, St, Lot, Bay, Plate, Card, Permit, Ent, Dock, Undock, Paid, Arch, Amt]) ->
     #{session_id => Sid, status => St, lot_id => Lot, bay_id => Bay, plate => Plate,
       card_id => Card, permit_ref => Permit, entered_at => Ent, docked_at => Dock,
-      undocked_at => Undock, paid_at => Paid, archived_at => Arch, amount_cents => Amt}.
+      undocked_at => Undock, paid_at => Paid, archived_at => Arch, fee_cents => Amt}.

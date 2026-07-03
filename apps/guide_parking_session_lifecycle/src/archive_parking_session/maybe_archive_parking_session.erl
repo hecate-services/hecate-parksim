@@ -2,7 +2,7 @@
 %%%
 %%% Requires session SETTLED (paid, or covered by a permit) and not yet
 %%% ARCHIVED. Echoes `fee_cents` from
-%%% the state's `amount_cents` (recorded at payment) — the event
+%%% the state's `fee_cents` (recorded at payment) — the event
 %%% payload is a subset of the dossier per DDD.md.
 -module(maybe_archive_parking_session).
 
@@ -45,7 +45,7 @@ emit(Cmd, State) ->
     DurationS  = duration_s(parking_session_state:entered_at(State), ArchivedAt),
     {ok, Event} = parking_session_archived_v1:new(#{
         session_id  => parking_session_state:session_id(State),
-        fee_cents   => parking_session_state:amount_cents(State),
+        fee_cents   => parking_session_state:fee_cents(State),
         plate       => parking_session_state:plate(State),
         lot_id      => parking_session_state:lot_id(State),
         duration_s  => DurationS,

@@ -89,7 +89,7 @@ undock(SessionId) ->
 pay(SessionId, AmountCents) ->
     _ = maybe_capture_payment:dispatch(#{
         session_id   => SessionId,
-        amount_cents => AmountCents,
+        fee_cents => AmountCents,
         paid_at      => simulate_clock:now_iso8601()
     }),
     ok.
@@ -132,7 +132,7 @@ settle_ticket(SessionId, Amount, Pause, exit, StoreId, Plate, LotId) ->
 
 %%--------------------------------------------------------------------
 %% Fee model — flat EUR 2.50 / started hour, min EUR 0.50. Crude but
-%% gives the events realistic amount_cents values for the demo.
+%% gives the events realistic fee_cents values for the demo.
 
 compute_fee_cents(DwellSec) ->
     HoursStarted = max(1, (DwellSec + 3599) div 3600),

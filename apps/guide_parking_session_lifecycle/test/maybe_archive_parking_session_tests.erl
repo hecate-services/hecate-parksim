@@ -19,7 +19,7 @@ initiated() ->
 paid()      ->
     parking_session_state:apply_event(initiated(), #{
         event_type => <<"payment_captured">>,
-        session_id => <<"sess-1">>, amount_cents => 500, paid_at => <<"t">>}).
+        session_id => <<"sess-1">>, fee_cents => 500, paid_at => <<"t">>}).
 archived()  ->
     parking_session_state:apply_event(paid(), #{
         event_type => <<"parking_session_archived">>,
@@ -34,7 +34,7 @@ permit_covered() ->
 happy_path_test() ->
     {ok, [Ev]} = maybe_archive_parking_session:handle(mk_cmd(#{}), paid()),
     ?assertEqual(<<"sess-1">>, parking_session_archived_v1:get_session_id(Ev)),
-    %% fee_cents echoed from state's amount_cents.
+    %% fee_cents echoed from state's fee_cents.
     ?assertEqual(500, parking_session_archived_v1:get_fee_cents(Ev)),
     ?assertEqual(<<"2026-05-26T10:00:00Z">>,
                  parking_session_archived_v1:get_archived_at(Ev)).

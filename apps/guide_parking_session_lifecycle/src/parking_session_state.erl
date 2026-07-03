@@ -14,7 +14,7 @@
 -export([
     session_id/1, lot_id/1, status_flags/1, plate/1, card_id/1, permit_ref/1,
     entered_at/1, bay_id/1, docked_at/1, undocked_at/1,
-    paid_at/1, amount_cents/1, archived_at/1, archive_reason/1,
+    paid_at/1, fee_cents/1, archived_at/1, archive_reason/1,
     has_status/2, is_initiated/1, is_docked/1, is_undocked/1,
     is_paid/1, is_permit_covered/1, is_settled/1, is_archived/1
 ]).
@@ -57,7 +57,7 @@ apply_event(#parking_session_state{status_flags = F} = S,
     S#parking_session_state{
         status_flags = evoq_bit_flags:set(F, ?SESSION_PAID),
         paid_at      = maps:get(paid_at,      Ev, S#parking_session_state.paid_at),
-        amount_cents = maps:get(amount_cents, Ev, S#parking_session_state.amount_cents)
+        fee_cents = maps:get(fee_cents, Ev, S#parking_session_state.fee_cents)
     };
 apply_event(#parking_session_state{status_flags = F} = S,
             #{event_type := <<"parking_session_archived">>} = Ev) ->
@@ -83,7 +83,7 @@ to_map(#parking_session_state{} = S) ->
       docked_at      => S#parking_session_state.docked_at,
       undocked_at    => S#parking_session_state.undocked_at,
       paid_at        => S#parking_session_state.paid_at,
-      amount_cents   => S#parking_session_state.amount_cents,
+      fee_cents   => S#parking_session_state.fee_cents,
       archived_at    => S#parking_session_state.archived_at,
       archive_reason => S#parking_session_state.archive_reason}.
 
@@ -101,7 +101,7 @@ bay_id(#parking_session_state{bay_id = V})                 -> V.
 docked_at(#parking_session_state{docked_at = V})           -> V.
 undocked_at(#parking_session_state{undocked_at = V})       -> V.
 paid_at(#parking_session_state{paid_at = V})               -> V.
-amount_cents(#parking_session_state{amount_cents = V})     -> V.
+fee_cents(#parking_session_state{fee_cents = V})     -> V.
 archived_at(#parking_session_state{archived_at = V})       -> V.
 archive_reason(#parking_session_state{archive_reason = V}) -> V.
 

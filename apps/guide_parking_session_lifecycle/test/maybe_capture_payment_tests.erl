@@ -6,7 +6,7 @@
 
 mk_cmd(Overrides) ->
     Base = #{<<"session_id">>   => <<"sess-1">>,
-             <<"amount_cents">> => 500,
+             <<"fee_cents">> => 500,
              <<"paid_at">>      => <<"2026-05-26T09:55:00Z">>},
     {ok, Cmd} = capture_payment_v1:from_map(maps:merge(Base, Overrides)),
     Cmd.
@@ -19,12 +19,12 @@ initiated() ->
 paid()      ->
     parking_session_state:apply_event(initiated(), #{
         event_type => <<"payment_captured">>,
-        session_id => <<"sess-1">>, amount_cents => 500, paid_at => <<"t">>}).
+        session_id => <<"sess-1">>, fee_cents => 500, paid_at => <<"t">>}).
 
 happy_path_test() ->
     {ok, [Ev]} = maybe_capture_payment:handle(mk_cmd(#{}), initiated()),
     ?assertEqual(<<"sess-1">>, payment_captured_v1:get_session_id(Ev)),
-    ?assertEqual(500,          payment_captured_v1:get_amount_cents(Ev)),
+    ?assertEqual(500,          payment_captured_v1:get_fee_cents(Ev)),
     ?assertEqual(<<"2026-05-26T09:55:00Z">>, payment_captured_v1:get_paid_at(Ev)).
 
 rejects_when_not_initiated_test() ->
@@ -35,14 +35,14 @@ rejects_when_already_paid_test() ->
     ?assertEqual({error, session_already_paid},
                  maybe_capture_payment:handle(mk_cmd(#{}), paid())).
 
-rejects_missing_amount_cents_test() ->
-    Cmd = mk_cmd(#{<<"amount_cents">> => undefined}),
-    ?assertEqual({error, missing_amount_cents},
+rejects_missing_fee_cents_test() ->
+    Cmd = mk_cmd(#{<<"fee_cents">> => undefined}),
+    ?assertEqual({error, missing_fee_cents},
                  maybe_capture_payment:handle(Cmd, initiated())).
 
-rejects_negative_amount_cents_test() ->
-    Cmd = mk_cmd(#{<<"amount_cents">> => -1}),
-    ?assertEqual({error, invalid_amount_cents},
+rejects_negative_fee_cents_test() ->
+    Cmd = mk_cmd(#{<<"fee_cents">> => -1}),
+    ?assertEqual({error, invalid_fee_cents},
                  maybe_capture_payment:handle(Cmd, initiated())).
 
 handler_defaults_paid_at_when_absent_test() ->

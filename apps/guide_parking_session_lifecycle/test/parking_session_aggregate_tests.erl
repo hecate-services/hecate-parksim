@@ -19,7 +19,7 @@ initiated_ev() ->
 paid_ev() ->
     #{event_type => <<"payment_captured">>,
       session_id => <<"sess-1">>,
-      amount_cents => 500,
+      fee_cents => 500,
       paid_at    => <<"prior">>}.
 
 archived_ev() ->
@@ -38,7 +38,7 @@ initiate_payload() ->
 capture_payload() ->
     #{command_type => <<"capture_payment">>,
       session_id   => <<"sess-1">>,
-      amount_cents => 500,
+      fee_cents => 500,
       paid_at      => <<"2026-05-26T09:55:00Z">>}.
 
 archive_payload() ->
@@ -80,7 +80,7 @@ execute_initiate_missing_lot_id_test() ->
 execute_capture_on_initiated_succeeds_test() ->
     {ok, [Map]} = parking_session_aggregate:execute(initiated(), capture_payload()),
     ?assertEqual(<<"payment_captured">>, maps:get(event_type, Map)),
-    ?assertEqual(500, maps:get(amount_cents, Map)).
+    ?assertEqual(500, maps:get(fee_cents, Map)).
 
 execute_capture_on_empty_rejects_test() ->
     ?assertEqual({error, session_not_initiated},
@@ -91,8 +91,8 @@ execute_capture_already_paid_rejects_test() ->
                  parking_session_aggregate:execute(paid(), capture_payload())).
 
 execute_capture_invalid_amount_test() ->
-    P = (capture_payload())#{amount_cents := -1},
-    ?assertEqual({error, invalid_amount_cents},
+    P = (capture_payload())#{fee_cents := -1},
+    ?assertEqual({error, invalid_fee_cents},
                  parking_session_aggregate:execute(initiated(), P)).
 
 %%--------------------------------------------------------------------
@@ -101,7 +101,7 @@ execute_capture_invalid_amount_test() ->
 execute_archive_on_paid_succeeds_test() ->
     {ok, [Map]} = parking_session_aggregate:execute(paid(), archive_payload()),
     ?assertEqual(<<"parking_session_archived">>, maps:get(event_type, Map)),
-    %% fee_cents echoed from state's amount_cents (recorded at payment).
+    %% fee_cents echoed from state's fee_cents (recorded at payment).
     ?assertEqual(500, maps:get(fee_cents, Map)).
 
 execute_archive_on_empty_rejects_test() ->

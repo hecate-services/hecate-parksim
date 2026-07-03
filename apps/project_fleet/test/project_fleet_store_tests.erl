@@ -19,7 +19,7 @@ fleet_read_model_test() ->
             ev(<<"vehicle_dispatched">>, V, #{}),
             ev(<<"passenger_picked_up">>, V, #{x => 50.879, y => 4.701}),
             ev(<<"passenger_dropped_off">>, V, #{x => 50.876, y => 4.700}),
-            ev(<<"fare_collected">>, V, #{amount_cents => 1450}),
+            ev(<<"fare_collected">>, V, #{fare_cents => 1450}),
             ev(<<"vehicle_returning">>, V, #{facility_id => <<"depot-centrum">>}),
             ev(<<"vehicle_docked_at_facility">>, V, #{facility_id => <<"depot-centrum">>,
                 bay_id => <<"b1">>, x => 50.881, y => 4.70}),

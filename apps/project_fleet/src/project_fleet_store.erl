@@ -126,7 +126,7 @@ apply_typed(<<"passenger_dropped_off">>, VId, Ev, Db) ->
     bump_trips(Db, VId),
     set_phase(Db, VId, ?VEH_CRUISING), ok;
 apply_typed(<<"fare_collected">>, VId, Ev, Db) ->
-    add_fare(Db, VId, maps:get(amount_cents, Ev, 0)), ok;
+    add_fare(Db, VId, maps:get(fare_cents, Ev, 0)), ok;
 apply_typed(<<"vehicle_returning">>, VId, Ev, Db) ->
     set_col(Db, VId, <<"facility_id">>, maps:get(facility_id, Ev, undefined)),
     set_phase(Db, VId, ?VEH_RETURNING), ok;

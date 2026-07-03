@@ -16,7 +16,7 @@
     docked_at    :: binary() | undefined,
     undocked_at  :: binary() | undefined,
     paid_at      :: binary() | undefined,
-    amount_cents :: non_neg_integer() | undefined,
+    fee_cents :: non_neg_integer() | undefined,
     archived_at  :: binary() | undefined,
     archive_reason :: binary() | undefined
 }).
