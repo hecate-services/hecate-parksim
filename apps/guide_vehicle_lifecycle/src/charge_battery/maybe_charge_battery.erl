@@ -1,61 +1,60 @@
-%%% @doc Handler for `service_vehicle_v1`.
+%%% @doc Handler for `charge_battery_v1`.
 %%%
 %%% Requires the vehicle to be DOCKED (or already SERVICING — a vehicle can
-%%% receive more than one service in a single dock, e.g. clean then maintain).
-%%% Emits `vehicle_serviced_v1` for a clean | maintain. Charging is its own
-%%% slice (charge_battery / battery_charged), so this no longer touches the
-%%% battery.
--module(maybe_service_vehicle).
+%%% charge then get cleaned in one visit). Emits `battery_charged_v1`,
+%%% defaulting the restored level to a full 100 when the caller didn't
+%%% specify one.
+-module(maybe_charge_battery).
 
 -include_lib("evoq/include/evoq.hrl").
 -include_lib("guide_vehicle_lifecycle/include/vehicle_state.hrl").
 
 -export([handle/1, handle/2, dispatch/1]).
 
--spec handle(service_vehicle_v1:t()) -> {ok, [map()]} | {error, term()}.
+-spec handle(charge_battery_v1:t()) -> {ok, [map()]} | {error, term()}.
 handle(Cmd) -> handle(Cmd, vehicle_state:new(<<>>)).
 
--spec handle(service_vehicle_v1:t(), #vehicle_state{}) ->
+-spec handle(charge_battery_v1:t(), #vehicle_state{}) ->
     {ok, [map()]} | {error, term()}.
 handle(Cmd, State) ->
-    case service_vehicle_v1:validate(Cmd) of
+    case charge_battery_v1:validate(Cmd) of
         ok ->
-            case can_service(State) of
+            case can_charge(State) of
                 false -> {error, vehicle_not_docked};
                 true  -> emit(Cmd, State)
             end;
         {error, _} = Err -> Err
     end.
 
-can_service(State) ->
+can_charge(State) ->
     vehicle_state:is_docked(State) orelse vehicle_state:is_servicing(State).
 
 emit(Cmd, State) ->
-    %% clean | maintain — no battery change (charging is battery_charged).
-    {ok, Ev} = vehicle_serviced_v1:new(#{
-        vehicle_id   => service_vehicle_v1:get_vehicle_id(Cmd),
-        company_id   => vehicle_state:company_id(State),
-        service_kind => service_vehicle_v1:get_kind(Cmd),
-        serviced_at  => coalesce(service_vehicle_v1:get_serviced_at(Cmd),
-                                 iso8601_now())
+    Battery = coalesce(charge_battery_v1:get_battery_pct(Cmd), 100),
+    {ok, Ev} = battery_charged_v1:new(#{
+        vehicle_id  => charge_battery_v1:get_vehicle_id(Cmd),
+        company_id  => vehicle_state:company_id(State),
+        battery_pct => Battery,
+        charged_at  => coalesce(charge_battery_v1:get_charged_at(Cmd),
+                                iso8601_now())
     }),
-    {ok, [vehicle_serviced_v1:to_map(Ev)]}.
+    {ok, [battery_charged_v1:to_map(Ev)]}.
 
 %%--------------------------------------------------------------------
 %% Dispatch wrapper
 
--spec dispatch(service_vehicle_v1:t() | map()) ->
+-spec dispatch(charge_battery_v1:t() | map()) ->
     {ok, non_neg_integer(), [map()]} | {error, term()}.
 dispatch(#{} = Data) ->
-    case service_vehicle_v1:from_map(Data) of
+    case charge_battery_v1:from_map(Data) of
         {ok, Cmd}      -> dispatch(Cmd);
         {error, _} = E -> E
     end;
 dispatch(Cmd) ->
-    VehicleId = service_vehicle_v1:get_vehicle_id(Cmd),
+    VehicleId = charge_battery_v1:get_vehicle_id(Cmd),
     EvoqCmd = evoq_command:new(
-        service_vehicle, vehicle_aggregate, vehicle_aggregate:stream_id(VehicleId),
-        service_vehicle_v1:to_map(Cmd),
+        charge_battery, vehicle_aggregate, vehicle_aggregate:stream_id(VehicleId),
+        charge_battery_v1:to_map(Cmd),
         #{timestamp => erlang:system_time(millisecond)}),
     Opts = #{store_id    => hecate_parksim_service:store_id(),
              adapter     => reckon_evoq_adapter,

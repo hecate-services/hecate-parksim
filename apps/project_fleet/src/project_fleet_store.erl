@@ -138,6 +138,10 @@ apply_typed(<<"vehicle_serviced">>, VId, Ev, Db) ->
     set_col(Db, VId, <<"service_kind">>, maps:get(service_kind, Ev, undefined)),
     maybe_recharge(Db, VId, Ev),
     set_phase(Db, VId, ?VEH_SERVICING), ok;
+apply_typed(<<"battery_charged">>, VId, Ev, Db) ->
+    set_col(Db, VId, <<"service_kind">>, <<"charge">>),
+    maybe_recharge(Db, VId, Ev),
+    set_phase(Db, VId, ?VEH_SERVICING), ok;
 apply_typed(<<"vehicle_released">>, VId, _Ev, Db) ->
     set_col(Db, VId, <<"facility_id">>, undefined),
     set_col(Db, VId, <<"service_kind">>, undefined),

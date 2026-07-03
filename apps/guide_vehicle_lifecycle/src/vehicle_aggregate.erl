@@ -57,6 +57,8 @@ execute(State, #{command_type := <<"return_vehicle">>} = P) ->
     route(return_vehicle_v1, maybe_return_vehicle, State, P);
 execute(State, #{command_type := <<"dock_at_facility">>} = P) ->
     route(dock_at_facility_v1, maybe_dock_at_facility, State, P);
+execute(State, #{command_type := <<"charge_battery">>} = P) ->
+    route(charge_battery_v1, maybe_charge_battery, State, P);
 execute(State, #{command_type := <<"service_vehicle">>} = P) ->
     route(service_vehicle_v1, maybe_service_vehicle, State, P);
 execute(State, #{command_type := <<"release_vehicle">>} = P) ->

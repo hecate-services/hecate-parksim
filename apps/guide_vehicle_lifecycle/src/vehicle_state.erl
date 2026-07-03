@@ -93,16 +93,19 @@ apply_event(S, #{event_type := <<"vehicle_docked_at_facility">>} = Ev) ->
         y           = g(y, Ev, S#vehicle_state.y),
         last_event_at = g(docked_at, Ev, S#vehicle_state.last_event_at)
     };
-apply_event(S, #{event_type := <<"vehicle_serviced">>} = Ev) ->
-    %% A charge tops the battery back up; clean/maintain leave it as-is.
-    Kind = g(service_kind, Ev, undefined),
-    Battery = case Kind of
-        <<"charge">> -> g(battery_pct, Ev, 100);
-        _            -> S#vehicle_state.battery_pct
-    end,
+apply_event(S, #{event_type := <<"battery_charged">>} = Ev) ->
+    %% A charge tops the battery back up. Its own event now (split out of
+    %% vehicle_serviced); still occupies the SERVICING phase at a facility.
     (set_phase(S, ?VEH_SERVICING))#vehicle_state{
-        service_kind  = Kind,
-        battery_pct   = Battery,
+        service_kind  = <<"charge">>,
+        battery_pct   = g(battery_pct, Ev, 100),
+        last_event_at = g(charged_at, Ev, S#vehicle_state.last_event_at)
+    };
+apply_event(S, #{event_type := <<"vehicle_serviced">>} = Ev) ->
+    %% clean | maintain — a physical service that leaves the battery alone
+    %% (charging is now battery_charged).
+    (set_phase(S, ?VEH_SERVICING))#vehicle_state{
+        service_kind  = g(service_kind, Ev, undefined),
         last_event_at = g(serviced_at, Ev, S#vehicle_state.last_event_at)
     };
 apply_event(S, #{event_type := <<"vehicle_released">>} = Ev) ->

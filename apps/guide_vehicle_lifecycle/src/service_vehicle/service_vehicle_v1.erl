@@ -1,6 +1,8 @@
-%%% @doc Command `service_vehicle_v1`. Perform a service on a docked
-%%% vehicle: `kind` is charge | clean | maintain. A charge tops the battery
-%%% back up (battery_pct on the event, default 100).
+%%% @doc Command `service_vehicle_v1`. Perform a physical service on a docked
+%%% vehicle: `kind` is clean | maintain. (Charging was split out into its own
+%%% `charge_battery_v1` / `battery_charged_v1` slice — a charge is far and away
+%%% the most frequent facility visit, so it earns a first-class fact. clean +
+%%% maintain will follow in the full split.)
 -module(service_vehicle_v1).
 -behaviour(evoq_command).
 
@@ -52,7 +54,7 @@ from_map(_) -> {error, missing_aggregate_id}.
 validate(#service_vehicle_v1{vehicle_id = undefined}) -> {error, missing_aggregate_id};
 validate(#service_vehicle_v1{kind = undefined})       -> {error, missing_service_kind};
 validate(#service_vehicle_v1{kind = K})
-  when K =:= <<"charge">>; K =:= <<"clean">>; K =:= <<"maintain">> -> ok;
+  when K =:= <<"clean">>; K =:= <<"maintain">> -> ok;
 validate(#service_vehicle_v1{}) -> {error, invalid_service_kind}.
 
 -spec to_map(t()) -> map().

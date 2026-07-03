@@ -283,10 +283,19 @@ on_reach_facility(V, Ctx) ->
                          bay_id     => Bay, x => Fac#facility.x,
                          y          => Fac#facility.y,
                          company_id => (Core#core.operator)#operator.id}}, Ctx),
-    emit(V1, {service_vehicle,
-              #{vehicle_id => V1#fveh.id, kind => Kind,
-                company_id => (Core#core.operator)#operator.id}},
-         put_veh(V1, Ctx2)).
+    %% Charging is its own fact now (battery_charged); clean/maintain stay
+    %% on service_vehicle. Battery is the dominant return reason, so this is
+    %% where the bulk of charges are emitted.
+    OpId = (Core#core.operator)#operator.id,
+    ServiceEffect = case Kind of
+        <<"charge">> ->
+            {charge_battery, #{vehicle_id => V1#fveh.id,
+                               battery_pct => 100, company_id => OpId}};
+        _ ->
+            {service_vehicle, #{vehicle_id => V1#fveh.id, kind => Kind,
+                                company_id => OpId}}
+    end,
+    emit(V1, ServiceEffect, put_veh(V1, Ctx2)).
 
 %%--------------------------------------------------------------------
 %% Service completion + tow

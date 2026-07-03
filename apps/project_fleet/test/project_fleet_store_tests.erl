@@ -23,7 +23,7 @@ fleet_read_model_test() ->
             ev(<<"vehicle_returning">>, V, #{facility_id => <<"depot-centrum">>}),
             ev(<<"vehicle_docked_at_facility">>, V, #{facility_id => <<"depot-centrum">>,
                 bay_id => <<"b1">>, x => 50.881, y => 4.70}),
-            ev(<<"vehicle_serviced">>, V, #{service_kind => <<"charge">>, battery_pct => 100.0})
+            ev(<<"battery_charged">>, V, #{battery_pct => 100.0})
         ]],
 
         V2 = <<"leuven-taxi-2">>,
@@ -73,7 +73,7 @@ exclusive_phase_test() ->
         project_fleet_store:apply_event(ev(<<"vehicle_dispatched">>, V, #{})),
         ?assertEqual(<<"dispatched">>, phase_of(V)),
         project_fleet_store:apply_event(
-            ev(<<"vehicle_serviced">>, V, #{service_kind => <<"charge">>, battery_pct => 100.0})),
+            ev(<<"battery_charged">>, V, #{battery_pct => 100.0})),
         %% must be ONLY servicing now — not dispatched|servicing
         ?assertEqual(<<"servicing">>, phase_of(V))
     after

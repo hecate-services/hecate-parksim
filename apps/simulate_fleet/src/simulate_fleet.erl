@@ -132,6 +132,7 @@ handler_for(pick_up_passenger)   -> maybe_pick_up_passenger;
 handler_for(drop_off_passenger)  -> maybe_drop_off_passenger;
 handler_for(return_vehicle)      -> maybe_return_vehicle;
 handler_for(dock_at_facility)    -> maybe_dock_at_facility;
+handler_for(charge_battery)      -> maybe_charge_battery;
 handler_for(service_vehicle)     -> maybe_service_vehicle;
 handler_for(release_vehicle)     -> maybe_release_vehicle;
 handler_for(deplete_battery)     -> maybe_deplete_battery;
