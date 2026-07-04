@@ -92,6 +92,7 @@ to_map(#commission_vehicle_v1{} = C) ->
 stream_id(#commission_vehicle_v1{vehicle_id = Id}) -> <<"vehicle-", Id/binary>>.
 
 get_vehicle_id(#commission_vehicle_v1{vehicle_id = V})           -> V.
+get_plate(#commission_vehicle_v1{plate = V})                     -> V.
 get_company_id(#commission_vehicle_v1{company_id = V})           -> V.
 get_model(#commission_vehicle_v1{model = V})                     -> V.
 get_home_facility_id(#commission_vehicle_v1{home_facility_id = V}) -> V.
