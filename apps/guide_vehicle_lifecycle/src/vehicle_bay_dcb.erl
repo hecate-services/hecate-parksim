@@ -24,7 +24,7 @@
 
 -include_lib("reckon_gater/include/reckon_gater_types.hrl").
 
--export([claim_bay/4, release_bay/3]).
+-export([claim_bay/4, release_bay/4]).
 
 -define(DOCKED, <<"vehicle_docked_in_bay">>).
 -define(LEFT,   <<"vehicle_left_bay">>).
@@ -44,10 +44,10 @@ claim_bay(StoreId, FacilityId, BayId, VehicleId) ->
 
 %% @doc Release the bay claim. Called after a vehicle departs.
 %% Always appends — no conflict possible on exit.
--spec release_bay(atom(), binary(), binary()) -> ok | {error, term()}.
-release_bay(StoreId, FacilityId, BayId) ->
+-spec release_bay(atom(), binary(), binary(), binary()) -> ok | {error, term()}.
+release_bay(StoreId, FacilityId, BayId, VehicleId) ->
     Tag   = bay_tag(FacilityId, BayId),
-    Event = left_event(FacilityId, BayId, Tag),
+    Event = left_event(FacilityId, BayId, VehicleId, Tag),
     %% {any_of, []} matches nothing — always appends (unconditional).
     case reckon_gater_api:append_if_no_tag_matches(StoreId, {any_of, []}, -1, [Event]) of
         {ok, _}          -> ok;
@@ -102,15 +102,21 @@ docked_event(FacilityId, BayId, VehicleId, Tag) ->
         data       => #{facility_id => FacilityId, bay_id => BayId,
                         vehicle_id  => VehicleId},
         metadata   => #{},
-        tags       => [Tag]
+        %% Bay tag drives the occupancy DCB; the vehicle tag lets you trace a
+        %% single vehicle's dock/leave history (pairs with left_event).
+        tags       => [Tag, <<"vehicle:", VehicleId/binary>>]
     }.
 
-left_event(FacilityId, BayId, Tag) ->
+left_event(FacilityId, BayId, VehicleId, Tag) ->
     #{
         event_type => ?LEFT,
-        data       => #{facility_id => FacilityId, bay_id => BayId},
+        %% Carry the vehicle id (a robotaxi's identifier — the analogue of a
+        %% parked car's plate) so a bay's dock/leave pair can be tied to the
+        %% vehicle, not just the bay. Tag by vehicle too, for entity tracing.
+        data       => #{facility_id => FacilityId, bay_id => BayId,
+                        vehicle_id  => VehicleId},
         metadata   => #{},
-        tags       => [Tag]
+        tags       => [Tag, <<"vehicle:", VehicleId/binary>>]
     }.
 
 bay_tag(FacilityId, BayId) -> <<"bay:", FacilityId/binary, ":", BayId/binary>>.

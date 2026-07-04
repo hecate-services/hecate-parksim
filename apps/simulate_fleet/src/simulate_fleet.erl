@@ -115,10 +115,11 @@ run_effect({dock_at_facility, #{facility_id := FacId, bay_id := BayId,
             logger:warning("[parksim] bay ~s/~s already occupied, skipping dock: ~p",
                            [FacId, BayId, Reason])
     end;
-run_effect({release_vehicle, #{facility_id := FacId, bay_id := BayId} = Payload},
+run_effect({release_vehicle, #{facility_id := FacId, bay_id := BayId,
+                               vehicle_id := VehId} = Payload},
            StoreId) ->
     _ = catch maybe_release_vehicle:dispatch(Payload),
-    _ = vehicle_bay_dcb:release_bay(StoreId, FacId, BayId);
+    _ = vehicle_bay_dcb:release_bay(StoreId, FacId, BayId, VehId);
 run_effect({release_vehicle, Payload}, _StoreId) ->
     %% Fallback: no facility_id/bay_id in payload (e.g. test/manual dispatch).
     _ = catch maybe_release_vehicle:dispatch(Payload);
