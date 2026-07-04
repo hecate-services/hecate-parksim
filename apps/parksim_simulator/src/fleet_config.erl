@@ -25,13 +25,13 @@
 -spec operators() -> [#operator{}].
 operators() ->
     [#operator{id = <<"leuven">>,   name = <<"Stella">>, color = <<"#3b82f6">>,
-               home = <<"facility-leuven">>,   fleet_size = 12},
+               home = <<"facility-leuven">>,   fleet_size = 24},
      #operator{id = <<"brussels">>, name = <<"Lux">>,    color = <<"#10b981">>,
-               home = <<"facility-brussels">>, fleet_size = 12},
+               home = <<"facility-brussels">>, fleet_size = 24},
      #operator{id = <<"ghent">>,    name = <<"Volt">>,   color = <<"#f59e0b">>,
-               home = <<"facility-ghent">>,    fleet_size = 12},
+               home = <<"facility-ghent">>,    fleet_size = 24},
      #operator{id = <<"antwerp">>,  name = <<"Nova">>,   color = <<"#ec4899">>,
-               home = <<"facility-antwerp">>,  fleet_size = 12}].
+               home = <<"facility-antwerp">>,  fleet_size = 24}].
 
 %% @doc The operator this node runs (by TENANT_ID; defaults to leuven).
 -spec operator() -> #operator{}.
@@ -112,7 +112,7 @@ params() ->
       fare_per_km_cents    => 120,
       fare_per_min_cents   => 25,
       %% demand: ride requests/min across the fleet at peak (per operator).
-      peak_requests_per_min => 10.0,   %% riders now queue + wait; keep the
+      peak_requests_per_min => 20.0,   %% riders now queue + wait; keep the
                                        %% backlog visible but bounded by the TTL
       request_ttl_secs      => 300}.   %% unassigned requests expire
 

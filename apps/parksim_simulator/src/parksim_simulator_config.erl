@@ -165,7 +165,7 @@ city_preset() ->
         name = <<"city">>,
         lots = city_lots(tenant()),
         avg_sessions_per_day = 9000,
-        peak_lambda_per_min  = 14.0,
+        peak_lambda_per_min  = 7.0,
         permit_roster_size   = 200,
         plate_pool_size      = 2000}.
 
