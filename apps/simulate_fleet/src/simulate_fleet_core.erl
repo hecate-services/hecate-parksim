@@ -24,7 +24,7 @@
     operator   :: #operator{},
     params     :: map(),
     facilities :: [#facility{}],
-    bays_free  :: #{binary() => non_neg_integer()},
+    bays_free  :: #{binary() => [binary()]},   %% free bay SLOT ids per facility
     vehicles   :: #{binary() => #fveh{}},
     pending = [] :: [#ride_request{}],   %% riders waiting for a free cab
     rng        :: rand:state()
@@ -47,7 +47,13 @@
 new(#operator{fleet_size = N, home = HomeId} = Op, Params, Rng) ->
     Facs = fleet_config:facilities(),
     Home = facility(HomeId, Facs),
-    Bays = maps:from_list([{F#facility.id, F#facility.bays} || F <- Facs]),
+    %% Real, fixed bay slots per facility (facility-x-bay-1 .. -bay-N). Cabs
+    %% compete for these; the DCB claims the SLOT (not a vehicle-named bay), so
+    %% "one cab per bay" is a meaningful, recycled occupancy invariant.
+    Bays = maps:from_list(
+        [{F#facility.id, [bay_slot(F#facility.id, Ix)
+                          || Ix <- lists:seq(1, F#facility.bays)]}
+         || F <- Facs]),
     Vehs0 = [new_vehicle(Op, I, Home) || I <- lists:seq(1, N)],
     Vehicles = maps:from_list([{V#fveh.id, V} || V <- Vehs0]),
     Effects = [{commission_vehicle,
@@ -197,9 +203,9 @@ begin_return(V, Ctx) ->
             Route = maps:get(route, Ctx),
             {Path, _D} = Route({V#fveh.x, V#fveh.y},
                                {Fac#facility.x, Fac#facility.y}),
-            Core1 = take_bay(Core, FacId),   %% reserve the bay now
+            {Core1, Slot} = take_bay(Core, FacId),   %% reserve a specific bay slot
             V1 = V#fveh{phase = returning, leg = to_facility, path = Path,
-                        dest_facility = FacId},
+                        dest_facility = FacId, dest_bay = Slot},
             emit(V1, {return_vehicle,
                       #{vehicle_id => V1#fveh.id, facility_id => FacId,
                         company_id => (Core#core.operator)#operator.id}},
@@ -304,16 +310,16 @@ on_reach_facility(V, Ctx) ->
                   lists:member(K, Fac#facility.kinds)],
     [Kind | Rest] = case Needs of [] -> [<<"charge">>]; _ -> Needs end,
     Dur = service_secs(Kind, Core#core.params),
-    Bay = bay_id(FacId, V),
+    %% dest_bay was assigned the specific slot at take_bay (return) time.
     V1 = V#fveh{phase = servicing, leg = none, path = [],
-                dest_bay = Bay, service_kind = Kind, service_queue = Rest,
+                service_kind = Kind, service_queue = Rest,
                 service_until = SimUnix + Dur,
                 x = Fac#facility.x, y = Fac#facility.y},
     %% Two milestones: dock, then begin service (on the first kind).
     Ctx2 = add_effect({dock_at_facility,
                        #{vehicle_id => V1#fveh.id, plate => V1#fveh.plate,
                          facility_id => FacId,
-                         bay_id     => Bay, x => Fac#facility.x,
+                         bay_id     => V1#fveh.dest_bay, x => Fac#facility.x,
                          y          => Fac#facility.y,
                          company_id => (Core#core.operator)#operator.id}}, Ctx),
     %% Each service kind is now its own fact (battery_charged / vehicle_cleaned
@@ -339,7 +345,7 @@ maybe_finish_service(V, Ctx) ->
                                  service_until = SimUnix + Dur},
                     emit(V2, service_effect(Next, V2, Core), put_veh(V2, Ctx));
                 [] ->
-                    Core1 = free_bay(Core, V1#fveh.dest_facility),
+                    Core1 = free_bay(Core, V1#fveh.dest_facility, V1#fveh.dest_bay),
                     V2 = V1#fveh{phase = cruising,
                                  dest_facility = undefined, dest_bay = undefined,
                                  service_kind = undefined, service_until = undefined},
@@ -411,9 +417,10 @@ maybe_complete_tow(V, Ctx, SimUnix, Core) ->
                     Route = maps:get(route, Ctx),
                     {Path, TowDist} = Route({V#fveh.x, V#fveh.y},
                                             {Fac#facility.x, Fac#facility.y}),
-                    Core1 = take_bay(Core, FacId),
+                    {Core1, Slot} = take_bay(Core, FacId),
                     V1 = V#fveh{phase = returning, leg = to_facility, path = Path,
-                                dest_facility = FacId, tow_until = undefined,
+                                dest_facility = FacId, dest_bay = Slot,
+                                tow_until = undefined,
                                 battery_pct = 5.0},  %% tow gives a limp charge
                     %% The rescue is its own fact (with its cost); the vehicle
                     %% is now RETURNING to the facility (docks + charges there).
@@ -460,18 +467,26 @@ tow_truck_id(Core, VehId) ->
 %% Returns the home facility if it has a free bay, else `none` (cab waits).
 home_facility(#core{operator = Op, facilities = Facs, bays_free = Free}) ->
     HomeId = Op#operator.home,
-    case maps:get(HomeId, Free, 0) > 0 of
-        true  -> facility(HomeId, Facs);
-        false -> none
+    case maps:get(HomeId, Free, []) of
+        [_ | _] -> facility(HomeId, Facs);
+        []      -> none
     end.
 
+%% Reserve a specific free bay slot at the facility. Returns {Core, SlotId}
+%% (SlotId is stored on the vehicle as dest_bay and claimed in the DCB).
 take_bay(#core{bays_free = Free} = Core, FacId) ->
-    Core#core{bays_free =
-        maps:update_with(FacId, fun(N) -> max(0, N - 1) end, 0, Free)}.
+    case maps:get(FacId, Free, []) of
+        [Slot | Rest] -> {Core#core{bays_free = Free#{FacId => Rest}}, Slot};
+        []            -> {Core, undefined}   %% shouldn't happen (home_facility gates)
+    end.
 
-free_bay(#core{} = Core, undefined) -> Core;
-free_bay(#core{bays_free = Free} = Core, FacId) ->
-    Core#core{bays_free = maps:update_with(FacId, fun(N) -> N + 1 end, 1, Free)}.
+free_bay(#core{} = Core, _FacId, undefined) -> Core;
+free_bay(#core{bays_free = Free} = Core, FacId, Slot) ->
+    Slots = maps:get(FacId, Free, []),
+    Core#core{bays_free = Free#{FacId => [Slot | Slots]}}.
+
+bay_slot(FacId, N) ->
+    <<FacId/binary, "-bay-", (integer_to_binary(N))/binary>>.
 
 %% The service kinds this vehicle is due for, in service order: battery is
 %% safety-critical, then mechanical maintenance, then cosmetic cleaning.
@@ -545,9 +560,6 @@ fare_cents(Metres, Params) ->
 
 service_secs(Kind, Params) ->
     maps:get(Kind, maps:get(service_secs, Params), 600).
-
-bay_id(FacId, #fveh{id = VId}) ->
-    iolist_to_binary([FacId, "-bay-", VId]).
 
 x_of({X, _}) -> X.
 y_of({_, Y}) -> Y.

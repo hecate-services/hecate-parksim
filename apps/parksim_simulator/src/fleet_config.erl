@@ -25,13 +25,13 @@
 -spec operators() -> [#operator{}].
 operators() ->
     [#operator{id = <<"leuven">>,   name = <<"Stella">>, color = <<"#3b82f6">>,
-               home = <<"facility-leuven">>,   fleet_size = 24},
+               home = <<"facility-leuven">>,   fleet_size = 50},
      #operator{id = <<"brussels">>, name = <<"Lux">>,    color = <<"#10b981">>,
-               home = <<"facility-brussels">>, fleet_size = 24},
+               home = <<"facility-brussels">>, fleet_size = 50},
      #operator{id = <<"ghent">>,    name = <<"Volt">>,   color = <<"#f59e0b">>,
-               home = <<"facility-ghent">>,    fleet_size = 24},
+               home = <<"facility-ghent">>,    fleet_size = 50},
      #operator{id = <<"antwerp">>,  name = <<"Nova">>,   color = <<"#ec4899">>,
-               home = <<"facility-antwerp">>,  fleet_size = 24}].
+               home = <<"facility-antwerp">>,  fleet_size = 50}].
 
 %% @doc The operator this node runs (by TENANT_ID; defaults to leuven).
 -spec operator() -> #operator{}.
@@ -55,16 +55,16 @@ operator() ->
 -spec facilities() -> [#facility{}].
 facilities() ->
     [#facility{id = <<"facility-leuven">>,   name = <<"Stella Hub">>,
-               x = 1.5, y = 1.5, bays = 4,
+               x = 1.5, y = 1.5, bays = 12,
                kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]},
      #facility{id = <<"facility-brussels">>, name = <<"Lux Hub">>,
-               x = 4.5, y = 1.5, bays = 4,
+               x = 4.5, y = 1.5, bays = 12,
                kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]},
      #facility{id = <<"facility-ghent">>,    name = <<"Volt Hub">>,
-               x = 1.5, y = 4.5, bays = 4,
+               x = 1.5, y = 4.5, bays = 12,
                kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]},
      #facility{id = <<"facility-antwerp">>,  name = <<"Nova Hub">>,
-               x = 4.5, y = 4.5, bays = 4,
+               x = 4.5, y = 4.5, bays = 12,
                kinds = [<<"charge">>, <<"clean">>, <<"maintain">>]}].
 
 %%--------------------------------------------------------------------
@@ -99,7 +99,7 @@ params() ->
       %% ~3 min, maintenance ~5 min, charge ~8 min, each a short visible stay.
       %% Dial the rates down (and service_secs up) for a realistic, sparse cadence.
       battery_drain_per_km => 12.0,    %% %/km (demo-fast: ~8 km -> frequent charge)
-      idle_drain_per_tick  => 0.8,     %% standby %/tick so idle cabs also
+      idle_drain_per_tick  => 0.4,     %% standby %/tick so idle cabs also
                                        %% deplete -> charge/tow events fire
       return_threshold_pct => 32,      %% return to charge below this %
       clean_threshold_pct  => 40,      %% return to clean below this %
