@@ -160,7 +160,22 @@ try_take_fare(V, Ctx) ->
                         dropoff_y  => y_of(V1#fveh.dropoff)}},
                  put_veh(V1, Ctx1));
         _ ->
-            put_veh(V, Ctx)   %% no fare (or too flat) — idle this tick
+            idle_tick(V, Ctx)   %% no fare — draw standby power (may deplete)
+    end.
+
+%% Standby power draw for an idle robotaxi (sensors, compute, climate, comms).
+%% A demo knob: without it an idle cab's battery never moves, so it never
+%% needs charging and the charge / deplete / tow events never fire. Draining
+%% idle cabs keeps the full service catalogue exercised. Depletes to a tow if
+%% it hits zero (e.g. while a home bay is full).
+idle_tick(V, Ctx) ->
+    #{core := Core} = Ctx,
+    Drain = maps:get(idle_drain_per_tick, Core#core.params, 0.0),
+    Battery = V#fveh.battery_pct - Drain,
+    V1 = V#fveh{battery_pct = Battery},
+    case Battery =< 0.0 of
+        true  -> deplete(V1, Ctx);
+        false -> put_veh(V1, Ctx)
     end.
 
 begin_return(V, Ctx) ->

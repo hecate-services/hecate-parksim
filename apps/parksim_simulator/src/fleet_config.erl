@@ -98,16 +98,18 @@ params() ->
       %% fleet): a steady trickle of cabs cycles through the hubs — clean in
       %% ~3 min, maintenance ~5 min, charge ~8 min, each a short visible stay.
       %% Dial the rates down (and service_secs up) for a realistic, sparse cadence.
-      battery_drain_per_km => 4.0,     %% %/km -> ~25 km range (demo-fast)
+      battery_drain_per_km => 12.0,    %% %/km (demo-fast: ~8 km -> frequent charge)
+      idle_drain_per_tick  => 0.8,     %% standby %/tick so idle cabs also
+                                       %% deplete -> charge/tow events fire
       return_threshold_pct => 32,      %% return to charge below this %
       clean_threshold_pct  => 40,      %% return to clean below this %
       clean_per_trip       => 15,      %% cleanliness % lost per completed trip
-      maint_interval_km    => 8,       %% return for maintenance every N km
+      maint_interval_km    => 3,       %% return for maintenance every N km (demo)
       min_dispatch_pct     => 15,      %% refuse a fare below this (matches aggregate)
       service_secs         => #{<<"charge">> => 120,    %% sim seconds (short, so
                                 <<"clean">>  => 45,     %% bays cycle visibly —
                                 <<"maintain">> => 75},  %% /time_scale = wall secs
-      tow_secs             => 900,     %% sim seconds stranded before tow lands
+      tow_secs             => 180,     %% sim seconds stranded before tow lands (demo)
       fare_base_cents      => 250,
       fare_per_km_cents    => 120,
       fare_per_min_cents   => 25,

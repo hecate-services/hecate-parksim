@@ -104,7 +104,11 @@ lot(Id, Name, Profile, Cap, DwellMedianS, Sigma, PermitShare) ->
         profile        = Profile,
         capacity       = Cap,
         dwell_median_s = DwellMedianS,
-        dwell_mu       = math:log(DwellMedianS),
+        %% DEMO: real dwells are 1.5-4 h; compress ~50x so the parking DCB
+        %% claim+release (vehicle_entered_lot / vehicle_exited_lot) cycles in
+        %% ~1 min and BOTH events show abundantly. This is a reckon_db
+        %% features demo, not a realistic sim.
+        dwell_mu       = math:log(max(60, round(DwellMedianS * 0.02))),
         dwell_sigma    = Sigma,
         permit_share   = PermitShare}.
 
