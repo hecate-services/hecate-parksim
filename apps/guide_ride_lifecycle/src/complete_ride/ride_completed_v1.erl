@@ -26,6 +26,7 @@ event_type() -> ride_completed_v1.
 new(#{ride_id := Id} = P) ->
     {ok, #ride_completed_v1{
         ride_id      = Id,
+        company_id   = maps:get(company_id, P, undefined),
         vehicle_id   = maps:get(vehicle_id, P, undefined),
         plate   = maps:get(plate, P, undefined),
         fare_cents   = maps:get(fare_cents, P, 0),
@@ -38,6 +39,7 @@ new(#{ride_id := Id} = P) ->
 from_map(#{<<"ride_id">> := Id} = M) ->
     {ok, #ride_completed_v1{
         ride_id      = Id,
+        company_id   = maps:get(<<"company_id">>, M, undefined),
         vehicle_id   = maps:get(<<"vehicle_id">>, M, undefined),
         plate   = maps:get(<<"plate">>, M, undefined),
         fare_cents   = maps:get(<<"fare_cents">>, M, 0),
@@ -48,6 +50,7 @@ from_map(#{<<"ride_id">> := Id} = M) ->
 from_map(#{ride_id := Id} = M) ->
     {ok, #ride_completed_v1{
         ride_id      = Id,
+        company_id   = maps:get(company_id, M, undefined),
         vehicle_id   = maps:get(vehicle_id, M, undefined),
         plate   = maps:get(plate, M, undefined),
         fare_cents   = maps:get(fare_cents, M, 0),
