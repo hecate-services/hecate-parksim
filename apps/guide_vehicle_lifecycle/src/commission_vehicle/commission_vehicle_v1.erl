@@ -6,11 +6,12 @@
 -export([command_type/0]).
 -export([new/1, from_map/1, validate/1, to_map/1]).
 -export([stream_id/1]).
--export([get_vehicle_id/1, get_company_id/1, get_model/1, get_home_facility_id/1, get_battery_pct/1,
+-export([get_vehicle_id/1, get_plate/1, get_company_id/1, get_model/1, get_home_facility_id/1, get_battery_pct/1,
          get_x/1, get_y/1, get_commissioned_at/1]).
 
 -record(commission_vehicle_v1, {
     vehicle_id      :: binary() | undefined,
+    plate           :: binary() | undefined,
     company_id      :: binary() | undefined,
     model           :: binary() | undefined,
     home_facility_id :: binary() | undefined,
@@ -29,6 +30,7 @@ command_type() -> commission_vehicle_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #commission_vehicle_v1{
         vehicle_id      = Id,
+        plate           = maps:get(plate, P, undefined),
         company_id      = maps:get(company_id, P, undefined),
         model           = maps:get(model, P, undefined),
         home_facility_id = maps:get(home_facility_id, P, undefined),
@@ -44,6 +46,7 @@ new(_) ->
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #commission_vehicle_v1{
         vehicle_id      = Id,
+        plate           = maps:get(<<"plate">>, M, undefined),
         company_id      = maps:get(<<"company_id">>, M, undefined),
         model           = maps:get(<<"model">>, M, undefined),
         home_facility_id = maps:get(<<"home_facility_id">>, M, undefined),
@@ -55,6 +58,7 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #commission_vehicle_v1{
         vehicle_id      = Id,
+        plate           = maps:get(plate, M, undefined),
         company_id      = maps:get(company_id, M, undefined),
         model           = maps:get(model, M, undefined),
         home_facility_id = maps:get(home_facility_id, M, undefined),
@@ -75,6 +79,7 @@ validate(_) -> ok.
 to_map(#commission_vehicle_v1{} = C) ->
     #{command_type    => <<"commission_vehicle">>,
       vehicle_id      => C#commission_vehicle_v1.vehicle_id,
+      plate           => C#commission_vehicle_v1.plate,
       company_id      => C#commission_vehicle_v1.company_id,
       model           => C#commission_vehicle_v1.model,
       home_facility_id => C#commission_vehicle_v1.home_facility_id,

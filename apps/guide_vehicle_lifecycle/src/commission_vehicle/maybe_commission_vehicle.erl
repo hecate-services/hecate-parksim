@@ -29,6 +29,7 @@ handle(Cmd, State) ->
 emit(Cmd) ->
     {ok, Ev} = vehicle_commissioned_v1:new(#{
         vehicle_id      => commission_vehicle_v1:get_vehicle_id(Cmd),
+        plate           => commission_vehicle_v1:get_plate(Cmd),
         company_id      => commission_vehicle_v1:get_company_id(Cmd),
         model           => commission_vehicle_v1:get_model(Cmd),
         home_facility_id => commission_vehicle_v1:get_home_facility_id(Cmd),

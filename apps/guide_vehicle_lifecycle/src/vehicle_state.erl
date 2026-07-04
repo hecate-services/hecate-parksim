@@ -17,7 +17,7 @@
 -export([new/1, apply_event/2, to_map/1]).
 
 -export([
-    vehicle_id/1, company_id/1, status_flags/1, battery_pct/1,
+    vehicle_id/1, plate/1, company_id/1, status_flags/1, battery_pct/1,
     x/1, y/1, ride_id/1, trip_id/1, facility_id/1, bay_id/1, service_kind/1,
     trips_completed/1, fares_cents/1,
     has_status/2, is_commissioned/1, is_cruising/1, is_dispatched/1,
@@ -37,6 +37,7 @@ new(AggregateId) ->
 -spec apply_event(state(), map()) -> state().
 apply_event(S, #{event_type := <<"vehicle_commissioned">>} = Ev) ->
     (set_phase(S, ?VEH_COMMISSIONED))#vehicle_state{
+        plate           = g(plate, Ev, S#vehicle_state.plate),
         company_id      = g(company_id, Ev, S#vehicle_state.company_id),
         battery_pct     = g(battery_pct, Ev, S#vehicle_state.battery_pct),
         x             = g(x, Ev, S#vehicle_state.x),
@@ -178,6 +179,7 @@ set_phase(#vehicle_state{status_flags = F} = S, Phase) ->
 
 vehicle_id(#vehicle_state{vehicle_id = V})           -> V.
 company_id(#vehicle_state{company_id = V})           -> V.
+plate(#vehicle_state{plate = V})                     -> V.
 status_flags(#vehicle_state{status_flags = V})       -> V.
 battery_pct(#vehicle_state{battery_pct = V})         -> V.
 x(#vehicle_state{x = V})                         -> V.

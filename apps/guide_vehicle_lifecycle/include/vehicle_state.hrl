@@ -10,6 +10,7 @@
 
 -record(vehicle_state, {
     vehicle_id   :: binary() | undefined,
+    plate        :: binary() | undefined,    %% registered licence plate
     company_id   :: binary() | undefined,    %% operator/tenant (= TENANT_ID)
     status_flags = 0 :: non_neg_integer(),   %% exactly one phase bit (state machine)
 
