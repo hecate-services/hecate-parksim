@@ -107,8 +107,9 @@ run_effects(Effects) ->
     lists:foreach(fun(Effect) -> run_effect(Effect, StoreId) end, Effects).
 
 run_effect({dock_at_facility, #{facility_id := FacId, bay_id := BayId,
-                                vehicle_id  := VehicleId} = Payload}, StoreId) ->
-    case vehicle_bay_dcb:claim_bay(StoreId, FacId, BayId, VehicleId) of
+                                vehicle_id  := VehicleId,
+                                plate := Plate} = Payload}, StoreId) ->
+    case vehicle_bay_dcb:claim_bay(StoreId, FacId, BayId, VehicleId, Plate) of
         ok ->
             _ = catch maybe_dock_at_facility:dispatch(Payload);
         {error, Reason} ->
@@ -116,10 +117,10 @@ run_effect({dock_at_facility, #{facility_id := FacId, bay_id := BayId,
                            [FacId, BayId, Reason])
     end;
 run_effect({release_vehicle, #{facility_id := FacId, bay_id := BayId,
-                               vehicle_id := VehId} = Payload},
+                               vehicle_id := VehId, plate := Plate} = Payload},
            StoreId) ->
     _ = catch maybe_release_vehicle:dispatch(Payload),
-    _ = vehicle_bay_dcb:release_bay(StoreId, FacId, BayId, VehId);
+    _ = vehicle_bay_dcb:release_bay(StoreId, FacId, BayId, VehId, Plate);
 run_effect({release_vehicle, Payload}, _StoreId) ->
     %% Fallback: no facility_id/bay_id in payload (e.g. test/manual dispatch).
     _ = catch maybe_release_vehicle:dispatch(Payload);

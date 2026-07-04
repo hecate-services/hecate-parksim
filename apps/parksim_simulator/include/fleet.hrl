@@ -38,6 +38,8 @@
 %%% fires when the path is exhausted.
 -record(fveh, {
     id          :: binary(),
+    plate       :: binary(),     %% registered licence plate (robotaxis have
+                                 %% plates too — the real-world vehicle identity)
     phase       :: atom(),       %% commissioned|cruising|dispatched|on_trip
                                  %% |returning|docked|servicing|depleted
     x         :: number(),

@@ -24,7 +24,7 @@
 
 -include_lib("reckon_gater/include/reckon_gater_types.hrl").
 
--export([claim_bay/4, release_bay/4]).
+-export([claim_bay/5, release_bay/5]).
 
 -define(DOCKED, <<"vehicle_docked_in_bay">>).
 -define(LEFT,   <<"vehicle_left_bay">>).
@@ -36,18 +36,19 @@
 
 %% @doc Attempt to claim a bay for VehicleId. Returns `ok` on success
 %% or `{error, bay_already_occupied}` if the bay is currently taken.
--spec claim_bay(atom(), binary(), binary(), binary()) ->
+-spec claim_bay(atom(), binary(), binary(), binary(), binary()) ->
     ok | {error, bay_already_occupied} | {error, term()}.
-claim_bay(StoreId, FacilityId, BayId, VehicleId) ->
+claim_bay(StoreId, FacilityId, BayId, VehicleId, Plate) ->
     Tag = bay_tag(FacilityId, BayId),
-    do_claim(StoreId, FacilityId, BayId, VehicleId, Tag, ?MAX_RETRIES).
+    do_claim(StoreId, FacilityId, BayId, VehicleId, Plate, Tag, ?MAX_RETRIES).
 
 %% @doc Release the bay claim. Called after a vehicle departs.
 %% Always appends — no conflict possible on exit.
--spec release_bay(atom(), binary(), binary(), binary()) -> ok | {error, term()}.
-release_bay(StoreId, FacilityId, BayId, VehicleId) ->
+-spec release_bay(atom(), binary(), binary(), binary(), binary()) ->
+    ok | {error, term()}.
+release_bay(StoreId, FacilityId, BayId, VehicleId, Plate) ->
     Tag   = bay_tag(FacilityId, BayId),
-    Event = left_event(FacilityId, BayId, VehicleId, Tag),
+    Event = left_event(FacilityId, BayId, VehicleId, Plate, Tag),
     %% {any_of, []} matches nothing — always appends (unconditional).
     case reckon_gater_api:append_if_no_tag_matches(StoreId, {any_of, []}, -1, [Event]) of
         {ok, _}          -> ok;
@@ -58,21 +59,21 @@ release_bay(StoreId, FacilityId, BayId, VehicleId) ->
 %% Internal
 %%====================================================================
 
-do_claim(_, _, _, _, _, 0) ->
+do_claim(_, _, _, _, _, _, 0) ->
     {error, dcb_contention_exhausted};
-do_claim(StoreId, FacilityId, BayId, VehicleId, Tag, Retries) ->
+do_claim(StoreId, FacilityId, BayId, VehicleId, Plate, Tag, Retries) ->
     {LastLeftSeq, IsOccupied} = read_bay_state(StoreId, Tag),
     case IsOccupied of
         true ->
             {error, bay_already_occupied};
         false ->
-            Event  = docked_event(FacilityId, BayId, VehicleId, Tag),
+            Event  = docked_event(FacilityId, BayId, VehicleId, Plate, Tag),
             Filter = {and_, [{event_type, ?DOCKED}, {any_of, [Tag]}]},
             case reckon_gater_api:append_if_no_tag_matches(StoreId, Filter, LastLeftSeq, [Event]) of
                 {ok, _} ->
                     ok;
                 {error, {context_changed, _}} ->
-                    do_claim(StoreId, FacilityId, BayId, VehicleId, Tag, Retries - 1);
+                    do_claim(StoreId, FacilityId, BayId, VehicleId, Plate, Tag, Retries - 1);
                 {error, _} = Err ->
                     Err
             end
@@ -96,27 +97,29 @@ read_bay_state(StoreId, Tag) ->
             {-1, false}
     end.
 
-docked_event(FacilityId, BayId, VehicleId, Tag) ->
+docked_event(FacilityId, BayId, VehicleId, Plate, Tag) ->
     #{
         event_type => ?DOCKED,
         data       => #{facility_id => FacilityId, bay_id => BayId,
-                        vehicle_id  => VehicleId},
+                        vehicle_id  => VehicleId, plate => Plate},
         metadata   => #{},
-        %% Bay tag drives the occupancy DCB; the vehicle tag lets you trace a
-        %% single vehicle's dock/leave history (pairs with left_event).
-        tags       => [Tag, <<"vehicle:", VehicleId/binary>>]
+        %% Bay tag drives the occupancy DCB; plate + vehicle tags let you trace
+        %% a single robotaxi's dock/leave history (pairs with left_event).
+        tags       => [Tag, <<"plate:", Plate/binary>>,
+                       <<"vehicle:", VehicleId/binary>>]
     }.
 
-left_event(FacilityId, BayId, VehicleId, Tag) ->
+left_event(FacilityId, BayId, VehicleId, Plate, Tag) ->
     #{
         event_type => ?LEFT,
-        %% Carry the vehicle id (a robotaxi's identifier — the analogue of a
-        %% parked car's plate) so a bay's dock/leave pair can be tied to the
-        %% vehicle, not just the bay. Tag by vehicle too, for entity tracing.
+        %% Carry the plate (the robotaxi's real-world identity) and the
+        %% vehicle id so a bay's dock/leave pair ties to the vehicle, not just
+        %% the bay.
         data       => #{facility_id => FacilityId, bay_id => BayId,
-                        vehicle_id  => VehicleId},
+                        vehicle_id  => VehicleId, plate => Plate},
         metadata   => #{},
-        tags       => [Tag, <<"vehicle:", VehicleId/binary>>]
+        tags       => [Tag, <<"plate:", Plate/binary>>,
+                       <<"vehicle:", VehicleId/binary>>]
     }.
 
 bay_tag(FacilityId, BayId) -> <<"bay:", FacilityId/binary, ":", BayId/binary>>.

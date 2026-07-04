@@ -52,6 +52,7 @@ new(#operator{fleet_size = N, home = HomeId} = Op, Params, Rng) ->
     Vehicles = maps:from_list([{V#fveh.id, V} || V <- Vehs0]),
     Effects = [{commission_vehicle,
                 #{vehicle_id  => V#fveh.id,
+                  plate       => V#fveh.plate,
                   company_id  => Op#operator.id,
                   model       => vehicle_model(V#fveh.id),
                   home_facility_id => Op#operator.home,
@@ -64,8 +65,17 @@ new(#operator{fleet_size = N, home = HomeId} = Op, Params, Rng) ->
 
 new_vehicle(#operator{id = Op}, I, #facility{x = X, y = Y}) ->
     Id = iolist_to_binary([Op, "-taxi-", integer_to_list(I)]),
-    #fveh{id = Id, phase = commissioned, x = X, y = Y,
-          heading = 0.0, battery_pct = 100.0}.
+    #fveh{id = Id, plate = fleet_plate(Op, I), phase = commissioned,
+          x = X, y = Y, heading = 0.0, battery_pct = 100.0}.
+
+%% A stable Belgian-format plate (1-LLL-DDD) per vehicle, derived from the
+%% operator + index so it is deterministic across restarts.
+fleet_plate(Op, I) ->
+    H = erlang:phash2({Op, I, plate}),
+    C = fun(N) -> $A + (N rem 26) end,
+    iolist_to_binary(
+      io_lib:format("1-~c~c~c-~3..0B",
+                    [C(H), C(H bsr 5), C(H bsr 10), (H rem 900) + 100])).
 
 %%--------------------------------------------------------------------
 %% Tick
@@ -301,7 +311,8 @@ on_reach_facility(V, Ctx) ->
                 x = Fac#facility.x, y = Fac#facility.y},
     %% Two milestones: dock, then begin service (on the first kind).
     Ctx2 = add_effect({dock_at_facility,
-                       #{vehicle_id => V1#fveh.id, facility_id => FacId,
+                       #{vehicle_id => V1#fveh.id, plate => V1#fveh.plate,
+                         facility_id => FacId,
                          bay_id     => Bay, x => Fac#facility.x,
                          y          => Fac#facility.y,
                          company_id => (Core#core.operator)#operator.id}}, Ctx),
@@ -334,6 +345,7 @@ maybe_finish_service(V, Ctx) ->
                                  service_kind = undefined, service_until = undefined},
                     emit(V2, {release_vehicle,
                               #{vehicle_id  => V2#fveh.id,
+                                plate       => V2#fveh.plate,
                                 company_id  => (Core#core.operator)#operator.id,
                                 facility_id => V1#fveh.dest_facility,
                                 bay_id      => V1#fveh.dest_bay}},
