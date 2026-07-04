@@ -13,7 +13,7 @@
 -behaviour(hecate_om_service).
 
 -export([info/0, start/1, stop/1, health/0, capabilities/0, identity_spec/0]).
--export([store_id/0, data_dir/0, store_indexes/0, store_mode/0]).
+-export([store_id/0, data_dir/0, store_indexes/0, store_mode/0, store_integrity/0]).
 -export([tenant_id/0]).
 -export([is_leader/0]).
 
@@ -65,6 +65,21 @@ store_id() ->
 -spec store_mode() -> cluster.
 store_mode() ->
     cluster.
+
+%% @doc Per-store event integrity (HMAC tamper-resistance). Enabled iff
+%% PARKSIM_INTEGRITY_KEY is present in the container's env (base64 of 32
+%% bytes) — so integrity is switched on per tenant simply by injecting the
+%% key into that tenant's containers, with no image change. All replicas of
+%% a store MUST share the same key (they replicate the same event chain).
+%% Read by hecate_om:boot/1 (optional store_integrity/0 callback).
+-spec store_integrity() -> disabled | map().
+store_integrity() ->
+    case os:getenv("PARKSIM_INTEGRITY_KEY") of
+        false -> disabled;
+        ""    -> disabled;
+        _     -> #{enabled => true,
+                   key_source => {env_var, <<"PARKSIM_INTEGRITY_KEY">>}}
+    end.
 
 %% @doc Filesystem root for the store's on-disk state. reckon_db
 %% namespaces by store_id under this root.
