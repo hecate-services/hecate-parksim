@@ -27,6 +27,7 @@ emit(Cmd, State) ->
         ride_id     => assign_ride_v1:get_ride_id(Cmd),
         company_id => ride_state:company_id(State),
         vehicle_id  => assign_ride_v1:get_vehicle_id(Cmd),
+        plate       => assign_ride_v1:get_plate(Cmd),
         assigned_at => coalesce(assign_ride_v1:get_assigned_at(Cmd), iso8601_now())
     }),
     {ok, [ride_assigned_v1:to_map(Ev)]}.

@@ -27,6 +27,7 @@ emit(Cmd, State) ->
         ride_id      => complete_ride_v1:get_ride_id(Cmd),
         company_id   => ride_state:company_id(State),
         vehicle_id   => ride_state:vehicle_id(State),
+        plate        => ride_state:plate(State),
         fare_cents   => complete_ride_v1:get_fare_cents(Cmd),
         tip_cents    => complete_ride_v1:get_tip_cents(Cmd),
         rating       => complete_ride_v1:get_rating(Cmd),

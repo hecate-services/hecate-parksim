@@ -9,6 +9,7 @@
 
 -record(vehicle_released_v1, {
     vehicle_id  :: binary() | undefined,
+    plate       :: binary() | undefined,
     company_id  :: binary() | undefined,
     facility_id :: binary() | undefined,
     bay_id      :: binary() | undefined,
@@ -24,6 +25,7 @@ event_type() -> vehicle_released_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #vehicle_released_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, P, undefined),
         company_id  = maps:get(company_id, P, undefined),
         facility_id = maps:get(facility_id, P, undefined),
         bay_id      = maps:get(bay_id, P, undefined),
@@ -34,6 +36,7 @@ new(#{vehicle_id := Id} = P) ->
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #vehicle_released_v1{
         vehicle_id  = Id,
+        plate       = maps:get(<<"plate">>, M, undefined),
         company_id  = maps:get(<<"company_id">>, M, undefined),
         facility_id = maps:get(<<"facility_id">>, M, undefined),
         bay_id      = maps:get(<<"bay_id">>, M, undefined),
@@ -42,6 +45,7 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #vehicle_released_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, M, undefined),
         company_id  = maps:get(company_id, M, undefined),
         facility_id = maps:get(facility_id, M, undefined),
         bay_id      = maps:get(bay_id, M, undefined),
@@ -52,6 +56,7 @@ from_map(#{vehicle_id := Id} = M) ->
 to_map(#vehicle_released_v1{} = E) ->
     #{event_type   => <<"vehicle_released">>,
       vehicle_id   => E#vehicle_released_v1.vehicle_id,
+      plate   => E#vehicle_released_v1.plate,
       company_id   => E#vehicle_released_v1.company_id,
       facility_id  => E#vehicle_released_v1.facility_id,
       bay_id       => E#vehicle_released_v1.bay_id,

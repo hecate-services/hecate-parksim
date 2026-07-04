@@ -32,6 +32,7 @@ can_service(State) ->
 emit(Cmd, State) ->
     {ok, Ev} = vehicle_cleaned_v1:new(#{
         vehicle_id => clean_vehicle_v1:get_vehicle_id(Cmd),
+        plate        => vehicle_state:plate(State),
         company_id => vehicle_state:company_id(State),
         cleaning_cents => ?CLEANING_CENTS,
         cleaned_at => coalesce(clean_vehicle_v1:get_cleaned_at(Cmd), iso8601_now())

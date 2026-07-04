@@ -13,7 +13,8 @@
     party_size          :: pos_integer() | undefined,
     fare_estimate_cents :: non_neg_integer() | undefined,
     fare_cents          :: non_neg_integer() | undefined,  %% final, at completion
-    vehicle_id          :: binary() | undefined,   %% assigned cab
+    vehicle_id          :: binary() | undefined,   %% assigned cab (stable id)
+    plate               :: binary() | undefined,   %% assigned cab's plate (display)
     requested_at        :: binary() | undefined,
     last_event_at       :: binary() | undefined
 }).

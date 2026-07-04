@@ -9,6 +9,7 @@
 
 -record(vehicle_maintained_v1, {
     vehicle_id    :: binary() | undefined,
+    plate       :: binary() | undefined,
     company_id    :: binary() | undefined,
     maintenance_cents :: non_neg_integer() | undefined,
     maintained_at :: binary() | undefined
@@ -23,6 +24,7 @@ event_type() -> vehicle_maintained_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #vehicle_maintained_v1{
         vehicle_id    = Id,
+        plate       = maps:get(plate, P, undefined),
         company_id    = maps:get(company_id, P, undefined),
         maintenance_cents = maps:get(maintenance_cents, P, undefined),
         maintained_at = maps:get(maintained_at, P, undefined)
@@ -32,6 +34,7 @@ new(#{vehicle_id := Id} = P) ->
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #vehicle_maintained_v1{
         vehicle_id    = Id,
+        plate       = maps:get(<<"plate">>, M, undefined),
         company_id    = maps:get(<<"company_id">>, M, undefined),
         maintenance_cents = maps:get(<<"maintenance_cents">>, M, undefined),
         maintained_at = maps:get(<<"maintained_at">>, M, undefined)
@@ -39,6 +42,7 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #vehicle_maintained_v1{
         vehicle_id    = Id,
+        plate       = maps:get(plate, M, undefined),
         company_id    = maps:get(company_id, M, undefined),
         maintenance_cents = maps:get(maintenance_cents, M, undefined),
         maintained_at = maps:get(maintained_at, M, undefined)
@@ -48,6 +52,7 @@ from_map(#{vehicle_id := Id} = M) ->
 to_map(#vehicle_maintained_v1{} = E) ->
     #{event_type    => <<"vehicle_maintained">>,
       vehicle_id    => E#vehicle_maintained_v1.vehicle_id,
+      plate    => E#vehicle_maintained_v1.plate,
       company_id    => E#vehicle_maintained_v1.company_id,
       maintenance_cents => E#vehicle_maintained_v1.maintenance_cents,
       maintained_at => E#vehicle_maintained_v1.maintained_at}.

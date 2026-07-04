@@ -43,6 +43,7 @@ has_charge(State) ->
 emit(Cmd, State) ->
     {ok, Ev} = vehicle_dispatched_v1:new(#{
         vehicle_id    => dispatch_vehicle_v1:get_vehicle_id(Cmd),
+        plate        => vehicle_state:plate(State),
         company_id    => vehicle_state:company_id(State),
         ride_id       => dispatch_vehicle_v1:get_ride_id(Cmd),
         trip_id       => dispatch_vehicle_v1:get_trip_id(Cmd),

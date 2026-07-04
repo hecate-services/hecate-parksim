@@ -10,6 +10,7 @@
     ride_id     :: binary() | undefined,
     company_id     :: binary() | undefined,
     vehicle_id  :: binary() | undefined,
+    plate       :: binary() | undefined,
     assigned_at :: binary() | undefined
 }).
 
@@ -23,6 +24,7 @@ new(#{ride_id := Id} = P) ->
     {ok, #ride_assigned_v1{ride_id = Id,
                            company_id = maps:get(company_id, P, undefined),
         vehicle_id = maps:get(vehicle_id, P, undefined),
+        plate = maps:get(plate, P, undefined),
                            assigned_at = maps:get(assigned_at, P, undefined)}}.
 
 -spec from_map(map()) -> {ok, t()}.
@@ -30,11 +32,13 @@ from_map(#{<<"ride_id">> := Id} = M) ->
     {ok, #ride_assigned_v1{ride_id = Id,
                            company_id = maps:get(<<"company_id">>, M, undefined),
         vehicle_id = maps:get(<<"vehicle_id">>, M, undefined),
+        plate = maps:get(<<"plate">>, M, undefined),
                            assigned_at = maps:get(<<"assigned_at">>, M, undefined)}};
 from_map(#{ride_id := Id} = M) ->
     {ok, #ride_assigned_v1{ride_id = Id,
                            company_id = maps:get(company_id, M, undefined),
         vehicle_id = maps:get(vehicle_id, M, undefined),
+        plate = maps:get(plate, M, undefined),
                            assigned_at = maps:get(assigned_at, M, undefined)}}.
 
 -spec to_map(t()) -> map().
@@ -43,6 +47,7 @@ to_map(#ride_assigned_v1{} = E) ->
       ride_id     => E#ride_assigned_v1.ride_id,
       company_id  => E#ride_assigned_v1.company_id,
       vehicle_id  => E#ride_assigned_v1.vehicle_id,
+      plate  => E#ride_assigned_v1.plate,
       assigned_at => E#ride_assigned_v1.assigned_at}.
 
 get_ride_id(#ride_assigned_v1{ride_id = V})         -> V.

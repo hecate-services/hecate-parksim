@@ -10,6 +10,7 @@
     ride_id      :: binary() | undefined,
     company_id      :: binary() | undefined,
     vehicle_id   :: binary() | undefined,
+    plate       :: binary() | undefined,
     fare_cents   :: non_neg_integer() | undefined,
     tip_cents    :: non_neg_integer() | undefined,
     rating       :: 1..5 | undefined,
@@ -26,6 +27,7 @@ new(#{ride_id := Id} = P) ->
     {ok, #ride_completed_v1{
         ride_id      = Id,
         vehicle_id   = maps:get(vehicle_id, P, undefined),
+        plate   = maps:get(plate, P, undefined),
         fare_cents   = maps:get(fare_cents, P, 0),
         tip_cents    = maps:get(tip_cents, P, 0),
         rating       = maps:get(rating, P, undefined),
@@ -37,6 +39,7 @@ from_map(#{<<"ride_id">> := Id} = M) ->
     {ok, #ride_completed_v1{
         ride_id      = Id,
         vehicle_id   = maps:get(<<"vehicle_id">>, M, undefined),
+        plate   = maps:get(<<"plate">>, M, undefined),
         fare_cents   = maps:get(<<"fare_cents">>, M, 0),
         tip_cents    = maps:get(<<"tip_cents">>, M, 0),
         rating       = maps:get(<<"rating">>, M, undefined),
@@ -46,6 +49,7 @@ from_map(#{ride_id := Id} = M) ->
     {ok, #ride_completed_v1{
         ride_id      = Id,
         vehicle_id   = maps:get(vehicle_id, M, undefined),
+        plate   = maps:get(plate, M, undefined),
         fare_cents   = maps:get(fare_cents, M, 0),
         tip_cents    = maps:get(tip_cents, M, 0),
         rating       = maps:get(rating, M, undefined),
@@ -58,6 +62,7 @@ to_map(#ride_completed_v1{} = E) ->
       ride_id      => E#ride_completed_v1.ride_id,
       company_id   => E#ride_completed_v1.company_id,
       vehicle_id   => E#ride_completed_v1.vehicle_id,
+      plate   => E#ride_completed_v1.plate,
       fare_cents   => E#ride_completed_v1.fare_cents,
       tip_cents    => E#ride_completed_v1.tip_cents,
       rating       => E#ride_completed_v1.rating,

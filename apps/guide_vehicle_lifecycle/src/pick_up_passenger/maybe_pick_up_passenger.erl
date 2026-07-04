@@ -27,6 +27,7 @@ handle(Cmd, State) ->
 emit(Cmd, State) ->
     {ok, Ev} = passenger_picked_up_v1:new(#{
         vehicle_id   => pick_up_passenger_v1:get_vehicle_id(Cmd),
+        plate        => vehicle_state:plate(State),
         company_id   => vehicle_state:company_id(State),
         ride_id      => vehicle_state:ride_id(State),
         x          => pick_up_passenger_v1:get_x(Cmd),

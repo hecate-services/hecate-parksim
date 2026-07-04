@@ -80,6 +80,7 @@ init_schema(Db) ->
         "  fare_estimate_cents INTEGER,"
         "  fare_cents   INTEGER,"               %% final, at completion
         "  vehicle_id   TEXT,"
+        "  plate        TEXT,"
         "  requested_at TEXT,"
         "  assigned_at  TEXT,"
         "  last_event_at TEXT"
@@ -105,6 +106,7 @@ apply_typed(<<"ride_requested">>, RId, Ev, Db) ->
     set_phase(Db, RId, ?RIDE_REQUESTED), ok;
 apply_typed(<<"ride_assigned">>, RId, Ev, Db) ->
     set_col(Db, RId, <<"vehicle_id">>, maps:get(vehicle_id, Ev, undefined)),
+    set_col(Db, RId, <<"plate">>, maps:get(plate, Ev, undefined)),
     set_col(Db, RId, <<"assigned_at">>, maps:get(assigned_at, Ev, undefined)),
     set_phase(Db, RId, ?RIDE_ASSIGNED), ok;
 apply_typed(<<"ride_started">>, RId, _Ev, Db) ->
@@ -180,12 +182,12 @@ do_rides(#state{db = Db}) ->
     Rows = esqlite3:q(Db,
         "SELECT ride_id, company_id, status, pickup_x, pickup_y,"
         "       dropoff_x, dropoff_y, party_size, fare_estimate_cents,"
-        "       fare_cents, vehicle_id, requested_at FROM rides;"),
+        "       fare_cents, vehicle_id, plate, requested_at FROM rides;"),
     [#{ride_id => R, company_id => Co, status => phase_name(St),
        pickup_x => Px, pickup_y => Py, dropoff_x => Dx, dropoff_y => Dy,
        party_size => Pa, fare_estimate_cents => Fe, fare_cents => Fc,
-       vehicle_id => Vid, requested_at => Ra}
-     || [R, Co, St, Px, Py, Dx, Dy, Pa, Fe, Fc, Vid, Ra] <- Rows].
+       vehicle_id => Vid, plate => Pl, requested_at => Ra}
+     || [R, Co, St, Px, Py, Dx, Dy, Pa, Fe, Fc, Vid, Pl, Ra] <- Rows].
 
 do_by_company(#state{db = Db}) ->
     Rows = esqlite3:q(Db,

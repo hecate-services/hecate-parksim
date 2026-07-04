@@ -17,6 +17,7 @@ handle(Cmd, State) ->
 emit(Cmd, State) ->
     {ok, Ev} = tow_truck_dispatched_v1:new(#{
         vehicle_id    => dispatch_tow_truck_v1:get_vehicle_id(Cmd),
+        plate        => vehicle_state:plate(State),
         company_id    => vehicle_state:company_id(State),
         tow_truck_id  => dispatch_tow_truck_v1:get_tow_truck_id(Cmd),
         dispatched_at => coalesce(dispatch_tow_truck_v1:get_dispatched_at(Cmd), iso8601_now())}),

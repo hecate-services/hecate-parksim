@@ -37,6 +37,7 @@ can_dock(State) ->
 emit(Cmd, State) ->
     {ok, Ev} = vehicle_docked_at_facility_v1:new(#{
         vehicle_id  => dock_at_facility_v1:get_vehicle_id(Cmd),
+        plate        => vehicle_state:plate(State),
         company_id  => vehicle_state:company_id(State),
         facility_id => dock_at_facility_v1:get_facility_id(Cmd),
         bay_id      => dock_at_facility_v1:get_bay_id(Cmd),

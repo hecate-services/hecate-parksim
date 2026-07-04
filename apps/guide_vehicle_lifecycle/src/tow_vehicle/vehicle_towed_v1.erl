@@ -13,6 +13,7 @@
 
 -record(vehicle_towed_v1, {
     vehicle_id              :: binary() | undefined,
+    plate       :: binary() | undefined,
     company_id              :: binary() | undefined,
     tow_truck_id            :: binary() | undefined,
     from_x                  :: number() | undefined,
@@ -38,6 +39,7 @@ from_map(#{vehicle_id := Id} = M)       -> {ok, from(Id, M)}.
 from(Id, M) ->
     #vehicle_towed_v1{
         vehicle_id = Id,
+        plate       = maps:get(plate, M, undefined),
         company_id = maps:get(company_id, M, undefined),
         tow_truck_id = maps:get(tow_truck_id, M, undefined),
         from_x = maps:get(from_x, M, undefined),
@@ -50,6 +52,7 @@ from(Id, M) ->
 from_bin(Id, M) ->
     #vehicle_towed_v1{
         vehicle_id = Id,
+        plate       = maps:get(plate, M, undefined),
         company_id = maps:get(<<"company_id">>, M, undefined),
         tow_truck_id = maps:get(<<"tow_truck_id">>, M, undefined),
         from_x = maps:get(<<"from_x">>, M, undefined),
@@ -63,6 +66,7 @@ from_bin(Id, M) ->
 to_map(#vehicle_towed_v1{} = E) ->
     #{event_type              => <<"vehicle_towed">>,
       vehicle_id              => E#vehicle_towed_v1.vehicle_id,
+      plate              => E#vehicle_towed_v1.plate,
       company_id              => E#vehicle_towed_v1.company_id,
       tow_truck_id            => E#vehicle_towed_v1.tow_truck_id,
       from_x                  => E#vehicle_towed_v1.from_x,

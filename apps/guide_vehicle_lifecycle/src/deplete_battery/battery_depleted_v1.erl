@@ -9,6 +9,7 @@
 
 -record(battery_depleted_v1, {
     vehicle_id  :: binary() | undefined,
+    plate       :: binary() | undefined,
     company_id  :: binary() | undefined,
     x         :: number() | undefined,
     y         :: number() | undefined,
@@ -24,6 +25,7 @@ event_type() -> battery_depleted_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #battery_depleted_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, P, undefined),
         company_id  = maps:get(company_id, P, undefined),
         x         = maps:get(x, P, undefined),
         y         = maps:get(y, P, undefined),
@@ -34,6 +36,7 @@ new(#{vehicle_id := Id} = P) ->
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #battery_depleted_v1{
         vehicle_id  = Id,
+        plate       = maps:get(<<"plate">>, M, undefined),
         company_id  = maps:get(<<"company_id">>, M, undefined),
         x         = maps:get(<<"x">>, M, undefined),
         y         = maps:get(<<"y">>, M, undefined),
@@ -42,6 +45,7 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #battery_depleted_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, M, undefined),
         company_id  = maps:get(company_id, M, undefined),
         x         = maps:get(x, M, undefined),
         y         = maps:get(y, M, undefined),
@@ -52,6 +56,7 @@ from_map(#{vehicle_id := Id} = M) ->
 to_map(#battery_depleted_v1{} = E) ->
     #{event_type   => <<"battery_depleted">>,
       vehicle_id   => E#battery_depleted_v1.vehicle_id,
+      plate   => E#battery_depleted_v1.plate,
       company_id   => E#battery_depleted_v1.company_id,
       x          => E#battery_depleted_v1.x,
       y          => E#battery_depleted_v1.y,

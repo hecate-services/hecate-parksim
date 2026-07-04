@@ -40,6 +40,7 @@ is_moving(State) ->
 emit(Cmd, State) ->
     {ok, Ev} = battery_depleted_v1:new(#{
         vehicle_id  => deplete_battery_v1:get_vehicle_id(Cmd),
+        plate        => vehicle_state:plate(State),
         company_id  => vehicle_state:company_id(State),
         x         => deplete_battery_v1:get_x(Cmd),
         y         => deplete_battery_v1:get_y(Cmd),

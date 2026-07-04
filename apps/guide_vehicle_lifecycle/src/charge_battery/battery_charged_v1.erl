@@ -10,6 +10,7 @@
 
 -record(battery_charged_v1, {
     vehicle_id  :: binary() | undefined,
+    plate       :: binary() | undefined,
     company_id  :: binary() | undefined,
     battery_pct :: number() | undefined,
     battery_pct_before :: number() | undefined,
@@ -27,6 +28,7 @@ event_type() -> battery_charged_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #battery_charged_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, P, undefined),
         company_id  = maps:get(company_id, P, undefined),
         battery_pct = maps:get(battery_pct, P, undefined),
         battery_pct_before = maps:get(battery_pct_before, P, undefined),
@@ -39,6 +41,7 @@ new(#{vehicle_id := Id} = P) ->
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #battery_charged_v1{
         vehicle_id  = Id,
+        plate       = maps:get(<<"plate">>, M, undefined),
         company_id  = maps:get(<<"company_id">>, M, undefined),
         battery_pct = maps:get(<<"battery_pct">>, M, undefined),
         battery_pct_before = maps:get(<<"battery_pct_before">>, M, undefined),
@@ -49,6 +52,7 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #battery_charged_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, M, undefined),
         company_id  = maps:get(company_id, M, undefined),
         battery_pct = maps:get(battery_pct, M, undefined),
         battery_pct_before = maps:get(battery_pct_before, M, undefined),
@@ -61,6 +65,7 @@ from_map(#{vehicle_id := Id} = M) ->
 to_map(#battery_charged_v1{} = E) ->
     #{event_type  => <<"battery_charged">>,
       vehicle_id  => E#battery_charged_v1.vehicle_id,
+      plate  => E#battery_charged_v1.plate,
       company_id  => E#battery_charged_v1.company_id,
       battery_pct => E#battery_charged_v1.battery_pct,
       battery_pct_before => E#battery_charged_v1.battery_pct_before,

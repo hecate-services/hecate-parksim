@@ -35,6 +35,7 @@ can_release(State) ->
 emit(Cmd, State) ->
     {ok, Ev} = vehicle_released_v1:new(#{
         vehicle_id  => release_vehicle_v1:get_vehicle_id(Cmd),
+        plate        => vehicle_state:plate(State),
         company_id  => vehicle_state:company_id(State),
         facility_id => vehicle_state:facility_id(State),
         bay_id      => vehicle_state:bay_id(State),

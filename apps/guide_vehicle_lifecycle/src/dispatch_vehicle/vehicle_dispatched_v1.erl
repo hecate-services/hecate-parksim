@@ -11,6 +11,7 @@
 
 -record(vehicle_dispatched_v1, {
     vehicle_id    :: binary() | undefined,
+    plate       :: binary() | undefined,
     company_id    :: binary() | undefined,
     ride_id       :: binary() | undefined,
     trip_id       :: binary() | undefined,
@@ -30,6 +31,7 @@ event_type() -> vehicle_dispatched_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #vehicle_dispatched_v1{
         vehicle_id    = Id,
+        plate       = maps:get(plate, P, undefined),
         company_id    = maps:get(company_id, P, undefined),
         ride_id       = maps:get(ride_id, P, undefined),
         trip_id       = maps:get(trip_id, P, undefined),
@@ -44,6 +46,7 @@ new(#{vehicle_id := Id} = P) ->
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #vehicle_dispatched_v1{
         vehicle_id    = Id,
+        plate       = maps:get(<<"plate">>, M, undefined),
         company_id    = maps:get(<<"company_id">>, M, undefined),
         ride_id       = maps:get(<<"ride_id">>, M, undefined),
         trip_id       = maps:get(<<"trip_id">>, M, undefined),
@@ -56,6 +59,7 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #vehicle_dispatched_v1{
         vehicle_id    = Id,
+        plate       = maps:get(plate, M, undefined),
         company_id    = maps:get(company_id, M, undefined),
         ride_id       = maps:get(ride_id, M, undefined),
         trip_id       = maps:get(trip_id, M, undefined),
@@ -70,6 +74,7 @@ from_map(#{vehicle_id := Id} = M) ->
 to_map(#vehicle_dispatched_v1{} = E) ->
     #{event_type    => <<"vehicle_dispatched">>,
       vehicle_id    => E#vehicle_dispatched_v1.vehicle_id,
+      plate    => E#vehicle_dispatched_v1.plate,
       company_id    => E#vehicle_dispatched_v1.company_id,
       ride_id       => E#vehicle_dispatched_v1.ride_id,
       trip_id       => E#vehicle_dispatched_v1.trip_id,

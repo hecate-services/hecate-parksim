@@ -14,7 +14,7 @@
 -export([new/1, apply_event/2, to_map/1]).
 -export([
     ride_id/1, company_id/1, status_flags/1, party_size/1,
-    fare_estimate_cents/1, fare_cents/1, vehicle_id/1,
+    fare_estimate_cents/1, fare_cents/1, vehicle_id/1, plate/1,
     has_status/2, is_requested/1, is_assigned/1, is_started/1,
     is_completed/1, is_expired/1, is_pristine/1, is_active/1
 ]).
@@ -42,6 +42,7 @@ apply_event(S, #{event_type := <<"ride_requested">>} = Ev) ->
 apply_event(S, #{event_type := <<"ride_assigned">>} = Ev) ->
     (set_phase(S, ?RIDE_ASSIGNED))#ride_state{
         vehicle_id    = g(vehicle_id, Ev, S#ride_state.vehicle_id),
+        plate         = g(plate, Ev, S#ride_state.plate),
         last_event_at = g(assigned_at, Ev, S#ride_state.last_event_at)
     };
 apply_event(S, #{event_type := <<"ride_started">>} = Ev) ->
@@ -73,6 +74,7 @@ to_map(#ride_state{} = S) ->
       fare_estimate_cents => S#ride_state.fare_estimate_cents,
       fare_cents          => S#ride_state.fare_cents,
       vehicle_id          => S#ride_state.vehicle_id,
+      plate               => S#ride_state.plate,
       requested_at        => S#ride_state.requested_at,
       last_event_at       => S#ride_state.last_event_at}.
 
@@ -94,6 +96,7 @@ party_size(#ride_state{party_size = V})                   -> V.
 fare_estimate_cents(#ride_state{fare_estimate_cents = V}) -> V.
 fare_cents(#ride_state{fare_cents = V})                   -> V.
 vehicle_id(#ride_state{vehicle_id = V})                   -> V.
+plate(#ride_state{plate = V})                             -> V.
 
 has_status(#ride_state{status_flags = F}, Flag) ->
     F band Flag =/= 0.

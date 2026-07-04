@@ -10,6 +10,7 @@
     ride_id    :: binary() | undefined,
     company_id    :: binary() | undefined,
     vehicle_id :: binary() | undefined,
+    plate       :: binary() | undefined,
     started_at :: binary() | undefined
 }).
 
@@ -24,6 +25,7 @@ new(#{ride_id := Id} = P) ->
         ride_id    = Id,
         company_id = maps:get(company_id, P, undefined),
         vehicle_id = maps:get(vehicle_id, P, undefined),
+        plate = maps:get(plate, P, undefined),
         started_at = maps:get(started_at, P, undefined)
     }}.
 
@@ -33,6 +35,7 @@ from_map(#{<<"ride_id">> := Id} = M) ->
         ride_id    = Id,
         company_id = maps:get(<<"company_id">>, M, undefined),
         vehicle_id = maps:get(<<"vehicle_id">>, M, undefined),
+        plate = maps:get(<<"plate">>, M, undefined),
         started_at = maps:get(<<"started_at">>, M, undefined)
     }};
 from_map(#{ride_id := Id} = M) ->
@@ -40,6 +43,7 @@ from_map(#{ride_id := Id} = M) ->
         ride_id    = Id,
         company_id = maps:get(company_id, M, undefined),
         vehicle_id = maps:get(vehicle_id, M, undefined),
+        plate = maps:get(plate, M, undefined),
         started_at = maps:get(started_at, M, undefined)
     }}.
 
@@ -49,6 +53,7 @@ to_map(#ride_started_v1{} = E) ->
       ride_id    => E#ride_started_v1.ride_id,
       company_id => E#ride_started_v1.company_id,
       vehicle_id => E#ride_started_v1.vehicle_id,
+      plate => E#ride_started_v1.plate,
       started_at => E#ride_started_v1.started_at}.
 
 get_ride_id(#ride_started_v1{ride_id = V})       -> V.

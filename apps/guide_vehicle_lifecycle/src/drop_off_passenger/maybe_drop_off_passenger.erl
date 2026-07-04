@@ -33,6 +33,7 @@ emit(Cmd, State) ->
     RideId = vehicle_state:ride_id(State),
     {ok, Dropped} = passenger_dropped_off_v1:new(#{
         vehicle_id     => drop_off_passenger_v1:get_vehicle_id(Cmd),
+        plate        => vehicle_state:plate(State),
         company_id     => CompanyId,
         ride_id        => RideId,
         x            => drop_off_passenger_v1:get_x(Cmd),
@@ -41,6 +42,7 @@ emit(Cmd, State) ->
     }),
     {ok, Fare} = fare_collected_v1:new(#{
         vehicle_id   => drop_off_passenger_v1:get_vehicle_id(Cmd),
+        plate        => vehicle_state:plate(State),
         company_id   => CompanyId,
         ride_id      => RideId,
         trip_id      => vehicle_state:trip_id(State),

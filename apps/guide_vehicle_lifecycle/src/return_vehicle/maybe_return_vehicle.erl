@@ -28,6 +28,7 @@ handle(Cmd, State) ->
 emit(Cmd, State) ->
     {ok, Ev} = vehicle_returning_v1:new(#{
         vehicle_id   => return_vehicle_v1:get_vehicle_id(Cmd),
+        plate        => vehicle_state:plate(State),
         company_id   => vehicle_state:company_id(State),
         facility_id  => return_vehicle_v1:get_facility_id(Cmd),
         returning_at => coalesce(return_vehicle_v1:get_returning_at(Cmd),

@@ -41,6 +41,7 @@ emit(Cmd, State) ->
     EnergyKwh = erlang:max(0, After - Before) / 100 * ?BATTERY_CAPACITY_KWH,
     {ok, Ev} = battery_charged_v1:new(#{
         vehicle_id         => charge_battery_v1:get_vehicle_id(Cmd),
+        plate        => vehicle_state:plate(State),
         company_id         => vehicle_state:company_id(State),
         battery_pct        => After,
         battery_pct_before => Before,
