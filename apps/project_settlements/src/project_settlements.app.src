@@ -1,0 +1,19 @@
+{application, project_settlements, [
+    {description, "Projects money-bearing events into the operator ledger (PRJ)"},
+    {vsn, "0.1.0"},
+    {registered, [project_settlements_store]},
+    {mod, {project_settlements_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        esqlite,
+        reckon_db,
+        evoq,
+        reckon_evoq,
+        hecate_om,
+        parksim_simulator
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]}
+]}.
