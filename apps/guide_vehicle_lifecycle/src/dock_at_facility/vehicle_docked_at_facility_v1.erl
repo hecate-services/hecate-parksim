@@ -15,8 +15,8 @@
     company_id  :: binary() | undefined,
     facility_id :: binary() | undefined,
     bay_id      :: binary() | undefined,
-    x         :: number() | undefined,
-    y         :: number() | undefined,
+    x           :: number() | undefined,
+    y           :: number() | undefined,
     docked_at   :: binary() | undefined
 }).
 
@@ -33,8 +33,8 @@ new(#{vehicle_id := Id} = P) ->
         company_id  = maps:get(company_id, P, undefined),
         facility_id = maps:get(facility_id, P, undefined),
         bay_id      = maps:get(bay_id, P, undefined),
-        x         = maps:get(x, P, undefined),
-        y         = maps:get(y, P, undefined),
+        x           = maps:get(x, P, undefined),
+        y           = maps:get(y, P, undefined),
         docked_at   = maps:get(docked_at, P, undefined)
     }}.
 
@@ -46,8 +46,8 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
         company_id  = maps:get(<<"company_id">>, M, undefined),
         facility_id = maps:get(<<"facility_id">>, M, undefined),
         bay_id      = maps:get(<<"bay_id">>, M, undefined),
-        x         = maps:get(<<"x">>, M, undefined),
-        y         = maps:get(<<"y">>, M, undefined),
+        x           = maps:get(<<"x">>, M, undefined),
+        y           = maps:get(<<"y">>, M, undefined),
         docked_at   = maps:get(<<"docked_at">>, M, undefined)
     }};
 from_map(#{vehicle_id := Id} = M) ->
@@ -57,8 +57,8 @@ from_map(#{vehicle_id := Id} = M) ->
         company_id  = maps:get(company_id, M, undefined),
         facility_id = maps:get(facility_id, M, undefined),
         bay_id      = maps:get(bay_id, M, undefined),
-        x         = maps:get(x, M, undefined),
-        y         = maps:get(y, M, undefined),
+        x           = maps:get(x, M, undefined),
+        y           = maps:get(y, M, undefined),
         docked_at   = maps:get(docked_at, M, undefined)
     }}.
 
@@ -66,12 +66,12 @@ from_map(#{vehicle_id := Id} = M) ->
 to_map(#vehicle_docked_at_facility_v1{} = E) ->
     #{event_type   => <<"vehicle_docked_at_facility">>,
       vehicle_id   => E#vehicle_docked_at_facility_v1.vehicle_id,
-      plate   => E#vehicle_docked_at_facility_v1.plate,
+      plate        => E#vehicle_docked_at_facility_v1.plate,
       company_id   => E#vehicle_docked_at_facility_v1.company_id,
       facility_id  => E#vehicle_docked_at_facility_v1.facility_id,
       bay_id       => E#vehicle_docked_at_facility_v1.bay_id,
-      x          => E#vehicle_docked_at_facility_v1.x,
-      y          => E#vehicle_docked_at_facility_v1.y,
+      x            => E#vehicle_docked_at_facility_v1.x,
+      y            => E#vehicle_docked_at_facility_v1.y,
       docked_at    => E#vehicle_docked_at_facility_v1.docked_at}.
 
 get_vehicle_id(#vehicle_docked_at_facility_v1{vehicle_id = V})   -> V.

@@ -168,7 +168,7 @@ try_take_fare(V, Ctx) ->
                                  plate => V1#fveh.plate}},
                               Ctx#{requests => Rest}),
             emit(V1, {dispatch_vehicle,
-                      #{vehicle_id => V1#fveh.id, trip_id => V1#fveh.trip_id,
+                      #{vehicle_id => V1#fveh.id, plate => V1#fveh.plate, trip_id => V1#fveh.trip_id,
                         ride_id    => V1#fveh.ride_id,
                         company_id => (Core#core.operator)#operator.id,
                         pickup_x   => x_of(V1#fveh.pickup),
@@ -208,7 +208,7 @@ begin_return(V, Ctx) ->
             V1 = V#fveh{phase = returning, leg = to_facility, path = Path,
                         dest_facility = FacId, dest_bay = Slot},
             emit(V1, {return_vehicle,
-                      #{vehicle_id => V1#fveh.id, facility_id => FacId,
+                      #{vehicle_id => V1#fveh.id, plate => V1#fveh.plate, facility_id => FacId,
                         company_id => (Core#core.operator)#operator.id}},
                  put_veh(V1, Ctx#{core => Core1}))
     end.
@@ -274,7 +274,7 @@ on_reach_pickup(V, Ctx) ->
     V1 = V#fveh{phase = on_trip, leg = to_dropoff, path = Path, trip_m = 0.0},
     Ctx1 = add_effect({start_ride, #{ride_id => V#fveh.ride_id}}, Ctx),
     emit(V1, {pick_up_passenger,
-              #{vehicle_id => V1#fveh.id,
+              #{vehicle_id => V1#fveh.id, plate => V1#fveh.plate,
                 ride_id    => V#fveh.ride_id,
                 company_id => (Core#core.operator)#operator.id,
                 x => V1#fveh.x, y => V1#fveh.y}},
@@ -293,7 +293,7 @@ on_reach_dropoff(V, Ctx) ->
                 trip_id = undefined, ride_id = undefined,
                 pickup = undefined, dropoff = undefined},
     emit(V1, {drop_off_passenger,
-              #{vehicle_id => V1#fveh.id, fare_cents => Fare,
+              #{vehicle_id => V1#fveh.id, plate => V1#fveh.plate, fare_cents => Fare,
                 tip_cents  => tip_cents(Fare),
                 surge_multiplier => surge_mult(V1#fveh.id),
                 payment_method   => pay_method(V#fveh.ride_id),
@@ -368,12 +368,12 @@ apply_service(_, V)              -> V.
 
 %% Map a service kind to its command effect — one distinct fact per kind.
 service_effect(<<"charge">>, V, Core) ->
-    {charge_battery, #{vehicle_id => V#fveh.id, battery_pct => 100,
+    {charge_battery, #{vehicle_id => V#fveh.id, plate => V#fveh.plate, battery_pct => 100,
                        company_id => op_id(Core)}};
 service_effect(<<"clean">>, V, Core) ->
-    {clean_vehicle, #{vehicle_id => V#fveh.id, company_id => op_id(Core)}};
+    {clean_vehicle, #{vehicle_id => V#fveh.id, plate => V#fveh.plate, company_id => op_id(Core)}};
 service_effect(<<"maintain">>, V, Core) ->
-    {maintain_vehicle, #{vehicle_id => V#fveh.id, company_id => op_id(Core)}}.
+    {maintain_vehicle, #{vehicle_id => V#fveh.id, plate => V#fveh.plate, company_id => op_id(Core)}}.
 
 op_id(Core) -> (Core#core.operator)#operator.id.
 
@@ -401,7 +401,7 @@ maybe_tow(V, Ctx) ->
             %% Tick after the request: a truck is assigned and heads out.
             V1 = V#fveh{tow_dispatched = true},
             emit(V1, {dispatch_tow_truck,
-                      #{vehicle_id => V1#fveh.id, company_id => op_id(Core),
+                      #{vehicle_id => V1#fveh.id, plate => V1#fveh.plate, company_id => op_id(Core),
                         tow_truck_id => V1#fveh.tow_truck_id}},
                  put_veh(V1, Ctx));
         true ->
@@ -426,7 +426,7 @@ maybe_complete_tow(V, Ctx, SimUnix, Core) ->
                     %% The rescue is its own fact (with its cost); the vehicle
                     %% is now RETURNING to the facility (docks + charges there).
                     emit(V1, {tow_vehicle,
-                              #{vehicle_id => V1#fveh.id,
+                              #{vehicle_id => V1#fveh.id, plate => V1#fveh.plate,
                                 company_id => op_id(Core),
                                 tow_truck_id => V#fveh.tow_truck_id,
                                 from_x => V#fveh.x, from_y => V#fveh.y,
@@ -446,10 +446,10 @@ deplete(V, Ctx) ->
     %% Stranded: the depletion fact, then immediately a tow request (the
     %% truck is dispatched next tick, and completes the tow on arrival).
     Ctx1 = add_effect({deplete_battery,
-                       #{vehicle_id => V1#fveh.id, company_id => op_id(Core),
+                       #{vehicle_id => V1#fveh.id, plate => V1#fveh.plate, company_id => op_id(Core),
                          x => V1#fveh.x, y => V1#fveh.y}}, Ctx),
     emit(V1, {request_tow,
-              #{vehicle_id => V1#fveh.id, company_id => op_id(Core),
+              #{vehicle_id => V1#fveh.id, plate => V1#fveh.plate, company_id => op_id(Core),
                 x => V1#fveh.x, y => V1#fveh.y}},
          put_veh(V1, Ctx1)).
 
