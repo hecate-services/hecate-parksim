@@ -21,11 +21,18 @@
          code_change/3]).
 
 -record(state, {
-    core        :: simulate_fleet_core:t(),
-    params      :: map(),
-    rng         :: rand:state(),
-    tick_ms     :: pos_integer(),
-    last_sim    :: integer()
+    core         :: simulate_fleet_core:t(),
+    params       :: map(),
+    rng          :: rand:state(),
+    tick_ms      :: pos_integer(),
+    last_sim     :: integer(),
+    %% Commissioning is deferred out of init() to the first LEADER tick, and
+    %% only latched once the store confirms the writes — otherwise a boot-race
+    %% (fleet commissioned on every replica, before the store had an elected
+    %% leader) left in-memory state and the store divergent (wrong_expected_
+    %% version), needing a manual restart. See ensure_commissioned/1.
+    commissioned = false :: boolean(),
+    commission_effects = [] :: [{atom(), map()}]
 }).
 
 start_link() ->
@@ -49,12 +56,14 @@ init([]) ->
     Seed = erlang:phash2(Op#operator.id),
     Rng0 = rand:seed_s(exsss, {Seed, Seed bsl 1, Seed bsl 2}),
     {Core, CommissionEffects} = simulate_fleet_core:new(Op, Params, Rng0),
-    %% Commission the whole fleet up front.
-    _ = run_effects(CommissionEffects),
+    %% Do NOT commission here — the store may not have an elected leader yet.
+    %% Deferred to the first leader tick (ensure_commissioned/1), which retries
+    %% until the writes land, so memory and store never diverge on a boot-race.
     TickMs = maps:get(tick_ms, Params, 1000),
     erlang:send_after(TickMs, self(), tick),
     {ok, #state{core = Core, params = Params, rng = Rng0,
-                tick_ms = TickMs, last_sim = simulate_clock:now_unix()}}.
+                tick_ms = TickMs, last_sim = simulate_clock:now_unix(),
+                commission_effects = CommissionEffects}}.
 
 handle_call(snapshot, _From, #state{core = Core} = S) ->
     {reply, simulate_fleet_core:snapshot(Core), S};
@@ -70,8 +79,16 @@ handle_info(tick, #state{} = S0) ->
     %% Follow-the-leader: only the store's Ra leader advances the fleet
     %% and dispatches milestone commands. Followers keep ticking (to
     %% re-check leadership) but do no work.
+    %% Only the leader advances the fleet — and only once the fleet is
+    %% commissioned (retried here until the store confirms). Advancing before
+    %% the commissions land is what produced the wrong_expected_version divergence.
     S1 = case hecate_parksim_service:is_leader() of
-             true  -> do_tick(S0);
+             true ->
+                 S = ensure_commissioned(S0),
+                 case S#state.commissioned of
+                     true  -> do_tick(S);
+                     false -> S
+                 end;
              false -> S0
          end,
     {noreply, S1};
@@ -102,6 +119,34 @@ do_tick(#state{core = Core0, params = Params, rng = Rng0, last_sim = Last} = S) 
 %%
 %% Bay DCB checks are performed here (not in the handler) to keep handlers
 %% pure and unit-testable — same pattern as parking_session_dcb in simulate_visit.
+%% @private Commission the fleet on the first leader tick, retrying until the
+%% store confirms every vehicle is present. Idempotent: a vehicle already
+%% commissioned by a prior leader counts as success. Only latch `commissioned'
+%% when ALL landed — otherwise stay false and retry next tick, so a boot-race
+%% (no elected leader yet) can never leave memory ahead of the store.
+-spec ensure_commissioned(#state{}) -> #state{}.
+ensure_commissioned(#state{commissioned = true} = S) ->
+    S;
+ensure_commissioned(#state{commission_effects = Effects} = S) ->
+    case lists:all(fun commission_ok/1, Effects) of
+        true  -> S#state{commissioned = true};
+        false -> S
+    end.
+
+%% @private A commission succeeded, or the vehicle is already in the store
+%% (idempotent). Any store-unavailable outcome (no leader/quorum yet, timeout)
+%% returns false so we retry rather than advance past an empty store.
+-spec commission_ok({atom(), map()}) -> boolean().
+commission_ok({commission_vehicle, Payload}) ->
+    case catch maybe_commission_vehicle:dispatch(Payload) of
+        {ok, _Version, _Events}                 -> true;
+        {error, vehicle_already_commissioned}   -> true;
+        {error, {wrong_expected_version, _, _}} -> true;
+        _Other                                  -> false
+    end;
+commission_ok(_Effect) ->
+    true.
+
 run_effects(Effects) ->
     StoreId = hecate_parksim_service:store_id(),
     lists:foreach(fun(Effect) -> run_effect(Effect, StoreId) end, Effects).
