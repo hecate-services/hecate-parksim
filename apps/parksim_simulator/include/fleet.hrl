@@ -40,6 +40,11 @@
     id          :: binary(),
     plate       :: binary(),     %% registered licence plate (robotaxis have
                                  %% plates too — the real-world vehicle identity)
+    vin         :: binary(),     %% vehicle identification number (asset identity,
+                                 %% issued once at commission — never changes)
+    soh_pct = 100.0 :: number(), %% battery State-of-Health: capacity health, only
+                                 %% decreases; a robotaxi's asset value tracks this
+    charge_cycles = 0 :: non_neg_integer(), %% full charges — degrades SoH
     phase       :: atom(),       %% commissioned|cruising|dispatched|on_trip
                                  %% |returning|docked|servicing|depleted
     x         :: number(),

@@ -10,6 +10,8 @@
 
 -record(battery_charged_v1, {
     vehicle_id  :: binary() | undefined,
+    charge_cycle       :: non_neg_integer() | undefined,
+    battery_soh_pct       :: number() | undefined,
     plate       :: binary() | undefined,
     company_id  :: binary() | undefined,
     battery_pct :: number() | undefined,
@@ -28,6 +30,8 @@ event_type() -> battery_charged_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #battery_charged_v1{
         vehicle_id  = Id,
+        charge_cycle       = maps:get(charge_cycle, P, undefined),
+        battery_soh_pct       = maps:get(battery_soh_pct, P, undefined),
         plate       = maps:get(plate, P, undefined),
         company_id  = maps:get(company_id, P, undefined),
         battery_pct = maps:get(battery_pct, P, undefined),
@@ -41,6 +45,8 @@ new(#{vehicle_id := Id} = P) ->
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #battery_charged_v1{
         vehicle_id  = Id,
+        charge_cycle       = maps:get(<<"charge_cycle">>, M, undefined),
+        battery_soh_pct       = maps:get(<<"battery_soh_pct">>, M, undefined),
         plate       = maps:get(<<"plate">>, M, undefined),
         company_id  = maps:get(<<"company_id">>, M, undefined),
         battery_pct = maps:get(<<"battery_pct">>, M, undefined),
@@ -52,6 +58,8 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #battery_charged_v1{
         vehicle_id  = Id,
+        charge_cycle       = maps:get(charge_cycle, M, undefined),
+        battery_soh_pct       = maps:get(battery_soh_pct, M, undefined),
         plate       = maps:get(plate, M, undefined),
         company_id  = maps:get(company_id, M, undefined),
         battery_pct = maps:get(battery_pct, M, undefined),
@@ -65,6 +73,8 @@ from_map(#{vehicle_id := Id} = M) ->
 to_map(#battery_charged_v1{} = E) ->
     #{event_type  => <<"battery_charged">>,
       vehicle_id  => E#battery_charged_v1.vehicle_id,
+      charge_cycle  => E#battery_charged_v1.charge_cycle,
+      battery_soh_pct  => E#battery_charged_v1.battery_soh_pct,
       plate  => E#battery_charged_v1.plate,
       company_id  => E#battery_charged_v1.company_id,
       battery_pct => E#battery_charged_v1.battery_pct,

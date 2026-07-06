@@ -59,6 +59,8 @@ new(#operator{fleet_size = N, home = HomeId} = Op, Params, Rng) ->
     Effects = [{commission_vehicle,
                 #{vehicle_id  => V#fveh.id,
                   plate       => V#fveh.plate,
+                  vin         => V#fveh.vin,
+                  battery_soh_pct => V#fveh.soh_pct,
                   company_id  => Op#operator.id,
                   model       => vehicle_model(V#fveh.id),
                   home_facility_id => Op#operator.home,
@@ -71,8 +73,20 @@ new(#operator{fleet_size = N, home = HomeId} = Op, Params, Rng) ->
 
 new_vehicle(#operator{id = Op}, I, #facility{x = X, y = Y}) ->
     Id = iolist_to_binary([Op, "-taxi-", integer_to_list(I)]),
-    #fveh{id = Id, plate = fleet_plate(Op, I), phase = commissioned,
-          x = X, y = Y, heading = 0.0, battery_pct = 100.0}.
+    #fveh{id = Id, plate = fleet_plate(Op, I), vin = fleet_vin(Op, I),
+          phase = commissioned, x = X, y = Y, heading = 0.0,
+          battery_pct = 100.0, soh_pct = 100.0, charge_cycles = 0}.
+
+%% A stable 17-char VIN per vehicle (WMI "5YJ" + deterministic body), issued
+%% once and never changed — the asset's permanent identity, distinct from the
+%% re-platable licence plate.
+fleet_vin(Op, I) ->
+    H = erlang:phash2({Op, I, vin}),
+    Aln = fun(N) -> element(1 + (N rem 32),
+              {$1,$2,$3,$4,$5,$6,$7,$8,$9,$0,$A,$B,$C,$D,$E,$F,$G,$H,$J,$K,$L,
+               $M,$N,$P,$R,$S,$T,$U,$V,$W,$X,$Y}) end,
+    Body = [Aln(H bsr (B * 3)) || B <- lists:seq(0, 13)],
+    iolist_to_binary(["5YJ" | Body]).
 
 %% A stable Belgian-format plate (1-LLL-DDD) per vehicle, derived from the
 %% operator + index so it is deterministic across restarts.
@@ -361,14 +375,27 @@ maybe_finish_service(V, Ctx) ->
     end.
 
 %% Reset the metric the just-finished service addressed.
-apply_service(<<"charge">>, V)   -> V#fveh{battery_pct = 100.0};
+apply_service(<<"charge">>, V) ->
+    {Cycle, Soh} = charged_soh(V#fveh.charge_cycles),
+    V#fveh{battery_pct = 100.0, charge_cycles = Cycle, soh_pct = Soh};
 apply_service(<<"clean">>, V)    -> V#fveh{cleanliness_pct = 100.0};
 apply_service(<<"maintain">>, V) -> V#fveh{km_since_maint = 0.0};
 apply_service(_, V)              -> V.
 
+%% Battery State-of-Health after one more full charge cycle. Accelerated
+%% (0.1%/cycle vs reality's ~0.01%) so the asset ages visibly in the demo;
+%% floored at 60% (replacement threshold).
+charged_soh(Cycles0) ->
+    Cycle = Cycles0 + 1,
+    {Cycle, max(60.0, 100.0 - Cycle * 0.1)}.
+
 %% Map a service kind to its command effect — one distinct fact per kind.
 service_effect(<<"charge">>, V, Core) ->
+    %% Emitted at charge START; apply_service bumps state at completion. Both use
+    %% charged_soh/1 so the event's SoH/cycle match the resulting state.
+    {Cycle, Soh} = charged_soh(V#fveh.charge_cycles),
     {charge_battery, #{vehicle_id => V#fveh.id, plate => V#fveh.plate, battery_pct => 100,
+                       battery_soh_pct => Soh, charge_cycle => Cycle,
                        company_id => op_id(Core)}};
 service_effect(<<"clean">>, V, Core) ->
     {clean_vehicle, #{vehicle_id => V#fveh.id, plate => V#fveh.plate, company_id => op_id(Core)}};

@@ -6,11 +6,14 @@
 -export([command_type/0]).
 -export([new/1, from_map/1, validate/1, to_map/1]).
 -export([stream_id/1]).
+-export([get_vin/1, get_battery_soh_pct/1]).
 -export([get_vehicle_id/1, get_plate/1, get_company_id/1, get_model/1, get_home_facility_id/1, get_battery_pct/1,
          get_x/1, get_y/1, get_commissioned_at/1]).
 
 -record(commission_vehicle_v1, {
     vehicle_id      :: binary() | undefined,
+    battery_soh_pct       :: number() | undefined,
+    vin       :: binary() | undefined,
     plate           :: binary() | undefined,
     company_id      :: binary() | undefined,
     model           :: binary() | undefined,
@@ -30,6 +33,8 @@ command_type() -> commission_vehicle_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #commission_vehicle_v1{
         vehicle_id      = Id,
+        battery_soh_pct       = maps:get(battery_soh_pct, P, undefined),
+        vin       = maps:get(vin, P, undefined),
         plate           = maps:get(plate, P, undefined),
         company_id      = maps:get(company_id, P, undefined),
         model           = maps:get(model, P, undefined),
@@ -46,6 +51,8 @@ new(_) ->
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #commission_vehicle_v1{
         vehicle_id      = Id,
+        battery_soh_pct       = maps:get(<<"battery_soh_pct">>, M, undefined),
+        vin       = maps:get(<<"vin">>, M, undefined),
         plate           = maps:get(<<"plate">>, M, undefined),
         company_id      = maps:get(<<"company_id">>, M, undefined),
         model           = maps:get(<<"model">>, M, undefined),
@@ -58,6 +65,8 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #commission_vehicle_v1{
         vehicle_id      = Id,
+        battery_soh_pct       = maps:get(battery_soh_pct, M, undefined),
+        vin       = maps:get(vin, M, undefined),
         plate           = maps:get(plate, M, undefined),
         company_id      = maps:get(company_id, M, undefined),
         model           = maps:get(model, M, undefined),
@@ -79,6 +88,8 @@ validate(_) -> ok.
 to_map(#commission_vehicle_v1{} = C) ->
     #{command_type    => <<"commission_vehicle">>,
       vehicle_id      => C#commission_vehicle_v1.vehicle_id,
+      battery_soh_pct      => C#commission_vehicle_v1.battery_soh_pct,
+      vin      => C#commission_vehicle_v1.vin,
       plate           => C#commission_vehicle_v1.plate,
       company_id      => C#commission_vehicle_v1.company_id,
       model           => C#commission_vehicle_v1.model,
@@ -100,3 +111,5 @@ get_battery_pct(#commission_vehicle_v1{battery_pct = V})         -> V.
 get_x(#commission_vehicle_v1{x = V})                         -> V.
 get_y(#commission_vehicle_v1{y = V})                         -> V.
 get_commissioned_at(#commission_vehicle_v1{commissioned_at = V}) -> V.
+get_vin(#commission_vehicle_v1{vin = V})                         -> V.
+get_battery_soh_pct(#commission_vehicle_v1{battery_soh_pct = V}) -> V.

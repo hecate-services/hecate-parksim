@@ -1,6 +1,6 @@
 {application, hecate_parksim, [
     {description, "Multi-tenant parking simulator — the majestic monolith"},
-    {vsn, "0.4.25"},
+    {vsn, "0.4.26"},
     {registered, []},
     {mod, {hecate_parksim_app, []}},
     {applications, [

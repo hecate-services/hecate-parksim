@@ -1,0 +1,10 @@
+{application, project_assets, [
+    {description, "Projects vehicle events into the fleet asset register (PRJ)"},
+    {vsn, "0.1.0"},
+    {registered, [project_assets_store]},
+    {mod, {project_assets_app, []}},
+    {applications, [kernel, stdlib, esqlite, reckon_db, evoq, reckon_evoq, hecate_om]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]}
+]}.

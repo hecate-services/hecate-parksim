@@ -10,6 +10,8 @@
 
 -record(vehicle_commissioned_v1, {
     vehicle_id      :: binary() | undefined,
+    battery_soh_pct       :: number() | undefined,
+    vin       :: binary() | undefined,
     plate           :: binary() | undefined,
     company_id      :: binary() | undefined,
     model           :: binary() | undefined,
@@ -29,6 +31,8 @@ event_type() -> vehicle_commissioned_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #vehicle_commissioned_v1{
         vehicle_id      = Id,
+        battery_soh_pct       = maps:get(battery_soh_pct, P, undefined),
+        vin       = maps:get(vin, P, undefined),
         plate           = maps:get(plate, P, undefined),
         company_id      = maps:get(company_id, P, undefined),
         model           = maps:get(model, P, undefined),
@@ -43,6 +47,8 @@ new(#{vehicle_id := Id} = P) ->
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #vehicle_commissioned_v1{
         vehicle_id      = Id,
+        battery_soh_pct       = maps:get(<<"battery_soh_pct">>, M, undefined),
+        vin       = maps:get(<<"vin">>, M, undefined),
         plate           = maps:get(<<"plate">>, M, undefined),
         company_id      = maps:get(<<"company_id">>, M, undefined),
         model           = maps:get(<<"model">>, M, undefined),
@@ -55,6 +61,8 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #vehicle_commissioned_v1{
         vehicle_id      = Id,
+        battery_soh_pct       = maps:get(battery_soh_pct, M, undefined),
+        vin       = maps:get(vin, M, undefined),
         plate           = maps:get(plate, M, undefined),
         company_id      = maps:get(company_id, M, undefined),
         model           = maps:get(model, M, undefined),
@@ -69,6 +77,8 @@ from_map(#{vehicle_id := Id} = M) ->
 to_map(#vehicle_commissioned_v1{} = E) ->
     #{event_type      => <<"vehicle_commissioned">>,
       vehicle_id      => E#vehicle_commissioned_v1.vehicle_id,
+      battery_soh_pct      => E#vehicle_commissioned_v1.battery_soh_pct,
+      vin      => E#vehicle_commissioned_v1.vin,
       plate           => E#vehicle_commissioned_v1.plate,
       company_id      => E#vehicle_commissioned_v1.company_id,
       model           => E#vehicle_commissioned_v1.model,
