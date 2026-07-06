@@ -11,6 +11,7 @@
 
 -record(return_vehicle_v1, {
     vehicle_id   :: binary() | undefined,
+    plate       :: binary() | undefined,
     facility_id  :: binary() | undefined,
     returning_at :: binary() | undefined
 }).
@@ -24,6 +25,7 @@ command_type() -> return_vehicle_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #return_vehicle_v1{
         vehicle_id   = Id,
+        plate       = maps:get(plate, P, undefined),
         facility_id  = maps:get(facility_id, P, undefined),
         returning_at = maps:get(returning_at, P, undefined)
     }};
@@ -33,12 +35,14 @@ new(_) -> {error, missing_aggregate_id}.
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #return_vehicle_v1{
         vehicle_id   = Id,
+        plate       = maps:get(<<"plate">>, M, undefined),
         facility_id  = maps:get(<<"facility_id">>, M, undefined),
         returning_at = maps:get(<<"returning_at">>, M, undefined)
     }};
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #return_vehicle_v1{
         vehicle_id   = Id,
+        plate       = maps:get(plate, M, undefined),
         facility_id  = maps:get(facility_id, M, undefined),
         returning_at = maps:get(returning_at, M, undefined)
     }};
@@ -53,6 +57,7 @@ validate(_) -> ok.
 to_map(#return_vehicle_v1{} = C) ->
     #{command_type => <<"return_vehicle">>,
       vehicle_id   => C#return_vehicle_v1.vehicle_id,
+      plate   => C#return_vehicle_v1.plate,
       facility_id  => C#return_vehicle_v1.facility_id,
       returning_at => C#return_vehicle_v1.returning_at}.
 

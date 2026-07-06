@@ -11,6 +11,7 @@
 
 -record(maintain_vehicle_v1, {
     vehicle_id    :: binary() | undefined,
+    plate       :: binary() | undefined,
     maintained_at :: binary() | undefined
 }).
 
@@ -42,6 +43,7 @@ validate(#maintain_vehicle_v1{}) -> ok.
 to_map(#maintain_vehicle_v1{} = C) ->
     #{command_type  => <<"maintain_vehicle">>,
       vehicle_id    => C#maintain_vehicle_v1.vehicle_id,
+      plate    => C#maintain_vehicle_v1.plate,
       maintained_at => C#maintain_vehicle_v1.maintained_at}.
 
 -spec stream_id(t()) -> binary().

@@ -11,6 +11,7 @@
 
 -record(dispatch_vehicle_v1, {
     vehicle_id    :: binary() | undefined,
+    plate       :: binary() | undefined,
     ride_id       :: binary() | undefined,
     trip_id       :: binary() | undefined,
     pickup_x    :: number() | undefined,
@@ -29,6 +30,7 @@ command_type() -> dispatch_vehicle_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #dispatch_vehicle_v1{
         vehicle_id    = Id,
+        plate       = maps:get(plate, P, undefined),
         ride_id       = maps:get(ride_id, P, undefined),
         trip_id       = maps:get(trip_id, P, undefined),
         pickup_x    = maps:get(pickup_x, P, undefined),
@@ -43,6 +45,7 @@ new(_) -> {error, missing_aggregate_id}.
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #dispatch_vehicle_v1{
         vehicle_id    = Id,
+        plate       = maps:get(<<"plate">>, M, undefined),
         ride_id       = maps:get(<<"ride_id">>, M, undefined),
         trip_id       = maps:get(<<"trip_id">>, M, undefined),
         pickup_x    = maps:get(<<"pickup_x">>, M, undefined),
@@ -54,6 +57,7 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #dispatch_vehicle_v1{
         vehicle_id    = Id,
+        plate       = maps:get(plate, M, undefined),
         ride_id       = maps:get(ride_id, M, undefined),
         trip_id       = maps:get(trip_id, M, undefined),
         pickup_x    = maps:get(pickup_x, M, undefined),
@@ -73,6 +77,7 @@ validate(_) -> ok.
 to_map(#dispatch_vehicle_v1{} = C) ->
     #{command_type  => <<"dispatch_vehicle">>,
       vehicle_id    => C#dispatch_vehicle_v1.vehicle_id,
+      plate    => C#dispatch_vehicle_v1.plate,
       ride_id       => C#dispatch_vehicle_v1.ride_id,
       trip_id       => C#dispatch_vehicle_v1.trip_id,
       pickup_x    => C#dispatch_vehicle_v1.pickup_x,

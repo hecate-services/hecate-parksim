@@ -11,6 +11,7 @@
 
 -record(deplete_battery_v1, {
     vehicle_id  :: binary() | undefined,
+    plate       :: binary() | undefined,
     x         :: number() | undefined,
     y         :: number() | undefined,
     depleted_at :: binary() | undefined
@@ -25,6 +26,7 @@ command_type() -> deplete_battery_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #deplete_battery_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, P, undefined),
         x         = maps:get(x, P, undefined),
         y         = maps:get(y, P, undefined),
         depleted_at = maps:get(depleted_at, P, undefined)
@@ -35,6 +37,7 @@ new(_) -> {error, missing_aggregate_id}.
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #deplete_battery_v1{
         vehicle_id  = Id,
+        plate       = maps:get(<<"plate">>, M, undefined),
         x         = maps:get(<<"x">>, M, undefined),
         y         = maps:get(<<"y">>, M, undefined),
         depleted_at = maps:get(<<"depleted_at">>, M, undefined)
@@ -42,6 +45,7 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #deplete_battery_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, M, undefined),
         x         = maps:get(x, M, undefined),
         y         = maps:get(y, M, undefined),
         depleted_at = maps:get(depleted_at, M, undefined)
@@ -56,6 +60,7 @@ validate(_) -> ok.
 to_map(#deplete_battery_v1{} = C) ->
     #{command_type => <<"deplete_battery">>,
       vehicle_id   => C#deplete_battery_v1.vehicle_id,
+      plate   => C#deplete_battery_v1.plate,
       x          => C#deplete_battery_v1.x,
       y          => C#deplete_battery_v1.y,
       depleted_at  => C#deplete_battery_v1.depleted_at}.

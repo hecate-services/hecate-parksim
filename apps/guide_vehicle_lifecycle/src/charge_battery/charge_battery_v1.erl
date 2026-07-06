@@ -16,6 +16,7 @@
 
 -record(charge_battery_v1, {
     vehicle_id  :: binary() | undefined,
+    plate       :: binary() | undefined,
     battery_pct :: number() | undefined,
     charged_at  :: binary() | undefined
 }).
@@ -29,6 +30,7 @@ command_type() -> charge_battery_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #charge_battery_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, P, undefined),
         battery_pct = maps:get(battery_pct, P, undefined),
         charged_at  = maps:get(charged_at, P, undefined)
     }};
@@ -38,12 +40,14 @@ new(_) -> {error, missing_aggregate_id}.
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #charge_battery_v1{
         vehicle_id  = Id,
+        plate       = maps:get(<<"plate">>, M, undefined),
         battery_pct = maps:get(<<"battery_pct">>, M, undefined),
         charged_at  = maps:get(<<"charged_at">>, M, undefined)
     }};
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #charge_battery_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, M, undefined),
         battery_pct = maps:get(battery_pct, M, undefined),
         charged_at  = maps:get(charged_at, M, undefined)
     }};
@@ -57,6 +61,7 @@ validate(#charge_battery_v1{}) -> ok.
 to_map(#charge_battery_v1{} = C) ->
     #{command_type => <<"charge_battery">>,
       vehicle_id   => C#charge_battery_v1.vehicle_id,
+      plate   => C#charge_battery_v1.plate,
       battery_pct  => C#charge_battery_v1.battery_pct,
       charged_at   => C#charge_battery_v1.charged_at}.
 

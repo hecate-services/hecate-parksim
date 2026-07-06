@@ -16,6 +16,7 @@
 
 -record(dock_at_facility_v1, {
     vehicle_id  :: binary() | undefined,
+    plate       :: binary() | undefined,
     facility_id :: binary() | undefined,
     bay_id      :: binary() | undefined,
     x         :: number() | undefined,
@@ -32,6 +33,7 @@ command_type() -> dock_at_facility_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #dock_at_facility_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, P, undefined),
         facility_id = maps:get(facility_id, P, undefined),
         bay_id      = maps:get(bay_id, P, undefined),
         x         = maps:get(x, P, undefined),
@@ -44,6 +46,7 @@ new(_) -> {error, missing_aggregate_id}.
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #dock_at_facility_v1{
         vehicle_id  = Id,
+        plate       = maps:get(<<"plate">>, M, undefined),
         facility_id = maps:get(<<"facility_id">>, M, undefined),
         bay_id      = maps:get(<<"bay_id">>, M, undefined),
         x         = maps:get(<<"x">>, M, undefined),
@@ -53,6 +56,7 @@ from_map(#{<<"vehicle_id">> := Id} = M) ->
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #dock_at_facility_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, M, undefined),
         facility_id = maps:get(facility_id, M, undefined),
         bay_id      = maps:get(bay_id, M, undefined),
         x         = maps:get(x, M, undefined),
@@ -71,6 +75,7 @@ validate(_) -> ok.
 to_map(#dock_at_facility_v1{} = C) ->
     #{command_type => <<"dock_at_facility">>,
       vehicle_id   => C#dock_at_facility_v1.vehicle_id,
+      plate   => C#dock_at_facility_v1.plate,
       facility_id  => C#dock_at_facility_v1.facility_id,
       bay_id       => C#dock_at_facility_v1.bay_id,
       x          => C#dock_at_facility_v1.x,

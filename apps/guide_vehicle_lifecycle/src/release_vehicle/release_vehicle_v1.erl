@@ -10,6 +10,7 @@
 
 -record(release_vehicle_v1, {
     vehicle_id  :: binary() | undefined,
+    plate       :: binary() | undefined,
     released_at :: binary() | undefined
 }).
 
@@ -22,6 +23,7 @@ command_type() -> release_vehicle_v1.
 new(#{vehicle_id := Id} = P) ->
     {ok, #release_vehicle_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, P, undefined),
         released_at = maps:get(released_at, P, undefined)
     }};
 new(_) -> {error, missing_aggregate_id}.
@@ -30,11 +32,13 @@ new(_) -> {error, missing_aggregate_id}.
 from_map(#{<<"vehicle_id">> := Id} = M) ->
     {ok, #release_vehicle_v1{
         vehicle_id  = Id,
+        plate       = maps:get(<<"plate">>, M, undefined),
         released_at = maps:get(<<"released_at">>, M, undefined)
     }};
 from_map(#{vehicle_id := Id} = M) ->
     {ok, #release_vehicle_v1{
         vehicle_id  = Id,
+        plate       = maps:get(plate, M, undefined),
         released_at = maps:get(released_at, M, undefined)
     }};
 from_map(_) -> {error, missing_aggregate_id}.
@@ -47,6 +51,7 @@ validate(_) -> ok.
 to_map(#release_vehicle_v1{} = C) ->
     #{command_type => <<"release_vehicle">>,
       vehicle_id   => C#release_vehicle_v1.vehicle_id,
+      plate   => C#release_vehicle_v1.plate,
       released_at  => C#release_vehicle_v1.released_at}.
 
 -spec stream_id(t()) -> binary().

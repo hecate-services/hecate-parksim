@@ -13,6 +13,7 @@
 
 -record(tow_vehicle_v1, {
     vehicle_id              :: binary() | undefined,
+    plate       :: binary() | undefined,
     company_id              :: binary() | undefined,
     tow_truck_id            :: binary() | undefined,
     from_x                  :: number() | undefined,
@@ -41,6 +42,7 @@ from_map(_) -> {error, missing_aggregate_id}.
 from(Id, M) ->
     #tow_vehicle_v1{
         vehicle_id = Id,
+        plate       = maps:get(plate, M, undefined),
         company_id = maps:get(company_id, M, undefined),
         tow_truck_id = maps:get(tow_truck_id, M, undefined),
         from_x = maps:get(from_x, M, undefined),
@@ -53,6 +55,7 @@ from(Id, M) ->
 from_bin(Id, M) ->
     #tow_vehicle_v1{
         vehicle_id = Id,
+        plate       = maps:get(plate, M, undefined),
         company_id = maps:get(<<"company_id">>, M, undefined),
         tow_truck_id = maps:get(<<"tow_truck_id">>, M, undefined),
         from_x = maps:get(<<"from_x">>, M, undefined),
@@ -70,6 +73,7 @@ validate(#tow_vehicle_v1{}) -> ok.
 to_map(#tow_vehicle_v1{} = C) ->
     #{command_type            => <<"tow_vehicle">>,
       vehicle_id              => C#tow_vehicle_v1.vehicle_id,
+      plate              => C#tow_vehicle_v1.plate,
       company_id              => C#tow_vehicle_v1.company_id,
       tow_truck_id            => C#tow_vehicle_v1.tow_truck_id,
       from_x                  => C#tow_vehicle_v1.from_x,
