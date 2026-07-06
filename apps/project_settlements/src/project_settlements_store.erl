@@ -108,6 +108,16 @@ do_apply_event(#{event_type := <<"vehicle_towed">>} = Ev, S) ->
     entry(S, g(towed_at, Ev), <<"tow_cost">>, debit,
           num(g(tow_cents, Ev)), g(vehicle_id, Ev)),
     ok;
+do_apply_event(#{event_type := <<"ride_cancelled">>} = Ev, S) ->
+    %% A cancellation fee is charged to the rider — revenue despite no trip.
+    entry(S, g(cancelled_at, Ev), <<"cancellation_fee">>, credit,
+          num(g(cancellation_fee_cents, Ev)), g(ride_id, Ev)),
+    ok;
+do_apply_event(#{event_type := <<"refund_issued">>} = Ev, S) ->
+    %% A refund reverses collected fare — a debit against the operator.
+    entry(S, g(refunded_at, Ev), <<"refund">>, debit,
+          num(g(refund_cents, Ev)), g(ride_id, Ev)),
+    ok;
 do_apply_event(_Ev, _S) ->
     ok.
 

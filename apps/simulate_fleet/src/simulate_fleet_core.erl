@@ -283,6 +283,26 @@ walk([Next | Rest] = Path, Pos, Budget, Moved) ->
 %% Leg-completion milestones
 
 on_reach_pickup(V, Ctx) ->
+    case ride_cancels(V#fveh.ride_id) of
+        true  -> on_no_show(V, Ctx);
+        false -> on_board_passenger(V, Ctx)
+    end.
+
+%% Rider was a no-show: cab arrived, nobody there. Cancel with a fee, drop the
+%% fare, and put the cab straight back to cruising (it never went on trip).
+on_no_show(V, Ctx) ->
+    #{core := Core} = Ctx,
+    Ctx1 = add_effect({cancel_ride,
+                       #{ride_id => V#fveh.ride_id,
+                         reason  => <<"rider_no_show">>,
+                         cancellation_fee_cents => cancel_fee_cents(Core#core.params),
+                         company_id => (Core#core.operator)#operator.id}}, Ctx),
+    V1 = V#fveh{phase = cruising, leg = none, path = [],
+                trip_id = undefined, ride_id = undefined,
+                pickup = undefined, dropoff = undefined},
+    put_veh(V1, Ctx1).
+
+on_board_passenger(V, Ctx) ->
     #{route := Route, core := Core} = Ctx,
     {Path, _D} = Route(V#fveh.pickup, V#fveh.dropoff),
     V1 = V#fveh{phase = on_trip, leg = to_dropoff, path = Path, trip_m = 0.0},
@@ -302,6 +322,10 @@ on_reach_dropoff(V, Ctx) ->
                        #{ride_id => V#fveh.ride_id, fare_cents => Fare,
                          tip_cents => tip_cents(Fare),
                          rating => rating(V#fveh.ride_id)}}, Ctx),
+    %% A fraction of completed rides draw a partial refund (fare dispute). The
+    %% aggregate serialises it after the completion it depends on.
+    Ctx2 = maybe_refund(V#fveh.ride_id, Fare,
+                        (Core#core.operator)#operator.id, Ctx1),
     V1 = V#fveh{phase = cruising, leg = none, path = [],
                 cleanliness_pct = max(0.0, V#fveh.cleanliness_pct - Dirt),
                 trip_id = undefined, ride_id = undefined,
@@ -314,7 +338,7 @@ on_reach_dropoff(V, Ctx) ->
                 ride_id    => V#fveh.ride_id,
                 company_id => (Core#core.operator)#operator.id,
                 x => V1#fveh.x, y => V1#fveh.y}},
-         put_veh(V1, Ctx1)).
+         put_veh(V1, Ctx2)).
 
 on_reach_facility(V, Ctx) ->
     #{core := Core, sim := SimUnix} = Ctx,
@@ -415,6 +439,29 @@ surge_mult(Seed) ->
     element(1 + (erlang:phash2({surge, Seed}) rem 3), {1.0, 1.2, 1.5}).
 pay_method(Seed) ->
     case erlang:phash2({pay, Seed}) rem 4 of 0 -> <<"wallet">>; _ -> <<"card">> end.
+
+%% Exceptions (deterministic per ride so the sim stays reproducible):
+%% ~8% of assigned rides end in a rider no-show at pickup; ~5% of completed
+%% rides draw a partial fare-dispute refund.
+ride_cancels(RideId) -> erlang:phash2({cancel, RideId}) rem 100 < 8.
+ride_refunds(RideId) -> erlang:phash2({refund, RideId}) rem 100 < 5.
+
+%% No-show fee: half a short-hop fare, floored (config `no_show_fee_cents').
+cancel_fee_cents(Params) -> maps:get(no_show_fee_cents, Params, 250).
+
+%% Add a partial-refund effect for the fraction of rides that dispute. A refund
+%% is 20-40% of the fare, deterministic on the ride id.
+maybe_refund(RideId, Fare, CompanyId, Ctx) ->
+    case ride_refunds(RideId) andalso Fare > 0 of
+        false -> Ctx;
+        true  ->
+            Pct    = 20 + (erlang:phash2({refund_pct, RideId}) rem 21), %% 20-40
+            Refund = round(Fare * Pct / 100),
+            add_effect({issue_refund,
+                        #{ride_id => RideId, refund_cents => Refund,
+                          reason => <<"fare_dispute">>,
+                          company_id => CompanyId}}, Ctx)
+    end.
 vehicle_model(Seed) ->
     element(1 + (erlang:phash2({model, Seed}) rem 3),
             {<<"robotaxi-mk2">>, <<"robotaxi-mk3">>, <<"robovan-x1">>}).

@@ -191,4 +191,6 @@ handler_for(request_ride)        -> maybe_request_ride;
 handler_for(assign_ride)         -> maybe_assign_ride;
 handler_for(start_ride)          -> maybe_start_ride;
 handler_for(complete_ride)       -> maybe_complete_ride;
+handler_for(cancel_ride)         -> maybe_cancel_ride;
+handler_for(issue_refund)        -> maybe_issue_refund;
 handler_for(expire_ride)         -> maybe_expire_ride.

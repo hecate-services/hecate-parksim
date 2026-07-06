@@ -15,10 +15,12 @@
 -export([interested_in/0, init/1, project/4]).
 
 interested_in() ->
-    [<<"ride_completed">>,     %% ride fare + tip  (revenue)
-     <<"payment_captured">>,   %% parking fee      (revenue)
-     <<"battery_charged">>,    %% energy cost      (cost)
-     <<"vehicle_towed">>].     %% tow cost         (cost)
+    [<<"ride_completed">>,     %% ride fare + tip     (revenue)
+     <<"payment_captured">>,   %% parking fee         (revenue)
+     <<"ride_cancelled">>,     %% cancellation fee    (revenue)
+     <<"battery_charged">>,    %% energy cost         (cost)
+     <<"vehicle_towed">>,      %% tow cost            (cost)
+     <<"refund_issued">>].     %% refund (fare reversal) (cost)
 
 init(_Config) ->
     {ok, RM} = evoq_read_model:new(evoq_read_model_ets, #{}),

@@ -16,7 +16,7 @@
     ride_id/1, company_id/1, status_flags/1, party_size/1,
     fare_estimate_cents/1, fare_cents/1, vehicle_id/1, plate/1,
     has_status/2, is_requested/1, is_assigned/1, is_started/1,
-    is_completed/1, is_expired/1, is_pristine/1, is_active/1
+    is_completed/1, is_expired/1, is_cancelled/1, is_pristine/1, is_active/1
 ]).
 
 -type state() :: #ride_state{}.
@@ -57,6 +57,17 @@ apply_event(S, #{event_type := <<"ride_completed">>} = Ev) ->
 apply_event(S, #{event_type := <<"ride_expired">>} = Ev) ->
     (set_phase(S, ?RIDE_EXPIRED))#ride_state{
         last_event_at = g(expired_at, Ev, S#ride_state.last_event_at)
+    };
+apply_event(S, #{event_type := <<"ride_cancelled">>} = Ev) ->
+    (set_phase(S, ?RIDE_CANCELLED))#ride_state{
+        vehicle_id    = g(vehicle_id, Ev, S#ride_state.vehicle_id),
+        last_event_at = g(cancelled_at, Ev, S#ride_state.last_event_at)
+    };
+apply_event(S, #{event_type := <<"refund_issued">>} = Ev) ->
+    %% No phase change: a completed ride stays completed; the fare is reduced.
+    S#ride_state{
+        fare_cents    = max(0, S#ride_state.fare_cents - g(refund_cents, Ev, 0)),
+        last_event_at = g(refunded_at, Ev, S#ride_state.last_event_at)
     };
 apply_event(S, _UnknownEvent) ->
     S.
@@ -106,6 +117,7 @@ is_assigned(S)  -> has_status(S, ?RIDE_ASSIGNED).
 is_started(S)   -> has_status(S, ?RIDE_STARTED).
 is_completed(S) -> has_status(S, ?RIDE_COMPLETED).
 is_expired(S)   -> has_status(S, ?RIDE_EXPIRED).
+is_cancelled(S) -> has_status(S, ?RIDE_CANCELLED).
 
 %% Never folded any event yet — no phase bit set.
 is_pristine(#ride_state{status_flags = 0}) -> true;

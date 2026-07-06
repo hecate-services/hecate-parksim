@@ -8,9 +8,10 @@
 -define(RIDE_STARTED,   4).    %% 2^2 — passenger aboard, en route to dropoff
 -define(RIDE_COMPLETED, 8).    %% 2^3 — dropped off, fare collected
 -define(RIDE_EXPIRED,  16).    %% 2^4 — rider gave up before a cab arrived
+-define(RIDE_CANCELLED, 32).   %% 2^5 — cancelled after assignment (rider/operator)
 
 -define(RIDE_ALL_PHASES,
         [?RIDE_REQUESTED, ?RIDE_ASSIGNED, ?RIDE_STARTED,
-         ?RIDE_COMPLETED, ?RIDE_EXPIRED]).
+         ?RIDE_COMPLETED, ?RIDE_EXPIRED, ?RIDE_CANCELLED]).
 
 -endif.

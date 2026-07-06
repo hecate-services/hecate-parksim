@@ -36,6 +36,26 @@ settlement_test_() ->
          ?_assertEqual(5, N)]
      end}.
 
+exceptions_test_() ->
+    {setup, fun setup/0, fun cleanup/1,
+     fun(_) ->
+        %% a cancellation fee is revenue (credit) despite no trip
+        ok = ?S:apply_event(#{event_type => <<"ride_cancelled">>, ride_id => <<"r1">>,
+                              cancellation_fee_cents => 250, cancelled_at => <<"t1">>}),
+        %% a refund reverses fare (debit)
+        ok = ?S:apply_event(#{event_type => <<"refund_issued">>, ride_id => <<"r2">>,
+                              refund_cents => 180, refunded_at => <<"t2">>}),
+        #{revenue_cents := Rev, cost_cents := Cost, net_cents := Net} = ?S:settlement(),
+        Kinds = ?S:by_kind(),
+        Fee  = [E || #{kind := <<"cancellation_fee">>} = E <- Kinds],
+        Ref  = [E || #{kind := <<"refund">>} = E <- Kinds],
+        [?_assertEqual(250, Rev),
+         ?_assertEqual(180, Cost),
+         ?_assertEqual(250 - 180, Net),
+         ?_assertMatch([#{amount_cents := 250, direction := <<"credit">>}], Fee),
+         ?_assertMatch([#{amount_cents := 180, direction := <<"debit">>}], Ref)]
+     end}.
+
 by_kind_test_() ->
     {setup, fun setup/0, fun cleanup/1,
      fun(_) ->

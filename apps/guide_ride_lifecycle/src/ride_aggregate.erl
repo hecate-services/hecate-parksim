@@ -45,6 +45,10 @@ execute(State, #{command_type := <<"complete_ride">>} = P) ->
     route(complete_ride_v1, maybe_complete_ride, State, P);
 execute(State, #{command_type := <<"expire_ride">>} = P) ->
     route(expire_ride_v1, maybe_expire_ride, State, P);
+execute(State, #{command_type := <<"cancel_ride">>} = P) ->
+    route(cancel_ride_v1, maybe_cancel_ride, State, P);
+execute(State, #{command_type := <<"issue_refund">>} = P) ->
+    route(issue_refund_v1, maybe_issue_refund, State, P);
 execute(_State, #{command_type := Other}) ->
     {error, {unhandled_command, Other}};
 execute(_State, _Payload) ->

@@ -41,6 +41,31 @@ full_fare_test() ->
     ?assertEqual([complete_ride, drop_off_passenger], cmds(E3)),
     ?assertEqual(cruising, phase(C3)).
 
+%% A rider no-show at pickup cancels the ride (fee) instead of boarding, and the
+%% cab returns straight to cruising. `r51' is a deterministic no-show seed.
+no_show_test() ->
+    {C0, _} = simulate_fleet_core:new(op(), fleet_config:params(),
+                                      rand:seed_s(exsss, {1,2,3})),
+    Req = #ride_request{id = <<"r51">>, pickup = {50.879, 4.701},
+                        dropoff = {50.876, 4.700}, created = 0},
+    {C1, _, _} = simulate_fleet_core:tick(C0, 43200, 1000.0, [Req], fun route/2),
+    {C2, _, E2} = simulate_fleet_core:tick(C1, 43260, 1000.0, [], fun route/2),
+    ?assertEqual([cancel_ride], cmds(E2)),
+    ?assertEqual(cruising, phase(C2)).
+
+%% A fraction of completed rides draw a partial refund after completion. `r3' is
+%% a deterministic refund seed (it boards normally, then refunds at dropoff).
+refund_test() ->
+    {C0, _} = simulate_fleet_core:new(op(), fleet_config:params(),
+                                      rand:seed_s(exsss, {1,2,3})),
+    Req = #ride_request{id = <<"r3">>, pickup = {50.879, 4.701},
+                        dropoff = {50.876, 4.700}, created = 0},
+    {C1, _, _} = simulate_fleet_core:tick(C0, 43200, 1000.0, [Req], fun route/2),
+    {C2, _, E2} = simulate_fleet_core:tick(C1, 43260, 1000.0, [], fun route/2),
+    ?assertEqual([start_ride, pick_up_passenger], cmds(E2)),
+    {_C3, _, E3} = simulate_fleet_core:tick(C2, 43320, 1000.0, [], fun route/2),
+    ?assertEqual([complete_ride, issue_refund, drop_off_passenger], cmds(E3)).
+
 %% Forced return -> dock+service -> release restores a full charge.
 service_cycle_test() ->
     P = maps:put(return_threshold_pct, 200, fleet_config:params()),  %% always return
