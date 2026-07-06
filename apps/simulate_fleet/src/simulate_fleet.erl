@@ -1,16 +1,19 @@
-%%% @doc The robotaxi fleet brain — one gen_server per node (operator).
+%%% @doc The fleet RUNNER — one gen_server per node (operator).
 %%%
-%%% Holds the whole fleet's in-memory kinematic state (via the pure
-%%% `simulate_fleet_core'), ticks on a wall timer, and on each tick:
-%%%   1. generates new ride requests (`simulate_demand'),
-%%%   2. advances every vehicle one step (the pure core, with real OSRM
-%%%      routing via `route_leg'),
-%%%   3. dispatches the resulting milestone commands into the vehicle
-%%%      aggregate (`maybe_*:dispatch/1').
+%%% Source-agnostic: it owns the tick loop, the leader-gating, and the dispatch
+%%% of command intents into the aggregates — but NOT what drives the fleet. That
+%%% is a pluggable `parksim_fleet_source' (the `fleet_source' param, default
+%%% `simulate_fleet_source'). Each tick, on the store's Ra leader, it:
+%%%   1. polls the source for this instant's command intents,
+%%%   2. dispatches each intent into its aggregate (`maybe_*:dispatch/1'),
+%%%      applying the bay DCB cross-cut where needed.
 %%%
-%%% Position/battery are high-frequency in-memory state; only the sparse
-%%% milestones become domain events. `snapshot/0' exposes the live fleet for
-%%% the telemetry publisher (step 5) and any inspection.
+%%% The source produces the sparse milestones; only those become domain events.
+%%% Position/battery live only in the source's in-memory state. `snapshot/0'
+%%% exposes the live fleet (via the source) for the telemetry publisher.
+%%%
+%%% Swapping the source for a real telematics/ANPR/charger/payment feed changes
+%%% nothing here or in the domain — see `parksim_fleet_source'.
 -module(simulate_fleet).
 -behaviour(gen_server).
 
@@ -21,18 +24,17 @@
          code_change/3]).
 
 -record(state, {
-    core         :: simulate_fleet_core:t(),
-    params       :: map(),
-    rng          :: rand:state(),
+    source_mod   :: module(),
+    source       :: term(),
     tick_ms      :: pos_integer(),
     last_sim     :: integer(),
     %% Commissioning is deferred out of init() to the first LEADER tick, and
     %% only latched once the store confirms the writes — otherwise a boot-race
     %% (fleet commissioned on every replica, before the store had an elected
-    %% leader) left in-memory state and the store divergent (wrong_expected_
+    %% leader) left the source state and the store divergent (wrong_expected_
     %% version), needing a manual restart. See ensure_commissioned/1.
     commissioned = false :: boolean(),
-    commission_effects = [] :: [{atom(), map()}]
+    commission_effects = [] :: [parksim_fleet_source:effect()]
 }).
 
 start_link() ->
@@ -53,22 +55,22 @@ rides() ->
 init([]) ->
     Op = fleet_config:operator(),
     Params = fleet_config:params(),
-    Seed = erlang:phash2(Op#operator.id),
-    Rng0 = rand:seed_s(exsss, {Seed, Seed bsl 1, Seed bsl 2}),
-    {Core, CommissionEffects} = simulate_fleet_core:new(Op, Params, Rng0),
+    %% Pluggable source: the sim by default, a real feed adapter in production.
+    SourceMod = maps:get(fleet_source, Params, simulate_fleet_source),
+    {ok, Source, CommissionEffects} = SourceMod:init(Op, Params),
     %% Do NOT commission here — the store may not have an elected leader yet.
     %% Deferred to the first leader tick (ensure_commissioned/1), which retries
-    %% until the writes land, so memory and store never diverge on a boot-race.
+    %% until the writes land, so the source and store never diverge on a boot-race.
     TickMs = maps:get(tick_ms, Params, 1000),
     erlang:send_after(TickMs, self(), tick),
-    {ok, #state{core = Core, params = Params, rng = Rng0,
+    {ok, #state{source_mod = SourceMod, source = Source,
                 tick_ms = TickMs, last_sim = simulate_clock:now_unix(),
                 commission_effects = CommissionEffects}}.
 
-handle_call(snapshot, _From, #state{core = Core} = S) ->
-    {reply, simulate_fleet_core:snapshot(Core), S};
-handle_call(rides, _From, #state{core = Core} = S) ->
-    {reply, simulate_fleet_core:rides(Core), S};
+handle_call(snapshot, _From, #state{source_mod = M, source = Src} = S) ->
+    {reply, M:snapshot(Src), S};
+handle_call(rides, _From, #state{source_mod = M, source = Src} = S) ->
+    {reply, M:rides(Src), S};
 handle_call(_Req, _From, S) ->
     {reply, ok, S}.
 
@@ -101,18 +103,12 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %%--------------------------------------------------------------------
 
-do_tick(#state{core = Core0, params = Params, rng = Rng0, last_sim = Last} = S) ->
+do_tick(#state{source_mod = M, source = Src0, last_sim = Last} = S) ->
     SimUnix = simulate_clock:now_unix(),
     TickSimSecs = max(1, SimUnix - Last),
-    {Reqs, Rng1} = simulate_demand:requests(SimUnix, TickSimSecs, Params, Rng0),
-    Route = fun(From, To) ->
-                Leg = route_leg:route(From, To),
-                {maps:get(polyline, Leg), maps:get(distance_m, Leg)}
-            end,
-    {Core2, _N, Effects} =
-        simulate_fleet_core:tick(Core0, SimUnix, TickSimSecs, Reqs, Route),
+    {Effects, Src1} = M:poll(SimUnix, TickSimSecs, Src0),
     _ = run_effects(Effects),
-    S#state{core = Core2, rng = Rng1, last_sim = SimUnix}.
+    S#state{source = Src1, last_sim = SimUnix}.
 
 %% Dispatch each {Command, Payload} effect into the aggregate. Failures are
 %% logged-and-swallowed: a single bad command must not stall the fleet.
