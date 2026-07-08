@@ -11,7 +11,8 @@ event-store story.
 
 | Document | Description | Status |
 |----------|-------------|--------|
-| [PLAN_DECENTRALIZED_NFR_DEMO.md](PLAN_DECENTRALIZED_NFR_DEMO.md) | Use parksim to demonstrate/motivate decentralized-vs-centralized event-store NFRs; Phase 1 = Decentralization Scorecard + partition/sovereignty/self-heal runbook, Phase 2 = charging-as-a-decentralized-process | 🟢 Scoped, Phase 1 starting |
+| [PLAN_DECENTRALIZED_NFR_DEMO.md](PLAN_DECENTRALIZED_NFR_DEMO.md) | Use parksim to demonstrate/motivate decentralized-vs-centralized event-store NFRs; Phase 1 = Decentralization Scorecard + partition/sovereignty/self-heal runbook, Phase 2 = charging-as-a-decentralized-process | 🟢 Phase 1 shipped, Phase 2 scoped |
+| [RUNBOOK_DECENTRALIZED_NFR_DEMO.md](RUNBOOK_DECENTRALIZED_NFR_DEMO.md) | Three live, scripted demo scenarios (partition autonomy · sovereignty/erasure · self-heal) run against the fleet on the admin dashboard | 🟢 Ready |
 | [PLAN_PARKSIM_MESH_CITIZEN.md](PLAN_PARKSIM_MESH_CITIZEN.md) | Make parksim a proper meshed realm citizen (correctness of realm/mesh membership) | ⚪ Open, not started |
 
 ## Designs (reference)

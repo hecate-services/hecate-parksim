@@ -1,6 +1,7 @@
 # PLAN — Demonstrating Decentralized vs Centralized Event-Store NFRs
 
-**Status:** Scoped (2026-07-08). Not started.
+**Status:** Phase 1 shipped (2026-07-08) — scorecard (reckon-gateway 0.30.0) +
+[RUNBOOK_DECENTRALIZED_NFR_DEMO.md](RUNBOOK_DECENTRALIZED_NFR_DEMO.md). Phase 2 scoped, not started.
 **Purpose:** Use parksim as a living proof that a *decentralized* event store
 (reckon_db in the Macula mesh) optimizes for a fundamentally different set of
 non-functional requirements than a *centralized* one (EventStoreDB, Kafka) — and
@@ -112,6 +113,17 @@ Per tenant / per node, surfaced via the SSE `status` snapshot:
 Files: `reckon_gateway_http_health.erl` (collect), `reckon_gateway_http_sse.erl`
 (`status.scorecard`), `priv/static/admin/index.html` (a "Decentralization"
 card). Keep the events/s meter but demote it from hero to a footnote.
+
+**Delivered v1 (reckon-gateway 0.30.0, 2026-07-08):** the scorecard is built
+*entirely from the existing SSE snapshot* — no new endpoint, no reckon-db bump.
+Four tiles: **sovereign stores** (independent Raft clusters), **quorate +
+weakest `can_lose`** (fault tolerance), **edge footprint** (on-disk event data
+across `nodes[]` + mean CPU), **facts-only egress** (sovereignty boundary).
+Fleet Event Ingest demoted to a footnoted meter. Each tile shows the "vs
+central" contrast. **Deferred** (documented follow-ups, need new counters/probe):
+live partition-state boolean, data-locality *ratio* (events-local vs
+facts-emitted counters on the edge), convergence-latency probe, and promoting
+`heal_count`/`last_heal_at` from the ORPHAN badge into a scorecard number.
 
 ### 4b. Demo runbook (`plans/` + a script under macula-demo/infrastructure)
 Scripted, repeatable scenarios that a viewer watches on the dashboard:
