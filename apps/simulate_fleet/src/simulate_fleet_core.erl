@@ -17,6 +17,7 @@
 -include_lib("parksim_simulator/include/fleet.hrl").
 
 -export([new/3, tick/5, vehicles/1, snapshot/1, rides/1]).
+-export([with_grid_cents/2]).
 %% Milestone callbacks — exported so advance/3 can dispatch via ?MODULE:F.
 -export([on_reach_pickup/2, on_reach_dropoff/2, on_reach_facility/2]).
 
@@ -149,9 +150,13 @@ step(Id, Ctx) ->
     step_phase(V#fveh.phase, V, Ctx).
 
 %% Idle (commissioned or cruising): decide between a fare and a charge run.
+%% Price-aware: when the grid is expensive and the battery isn't critical, a
+%% charge-only trip is DEFERRED — the cab keeps earning and charges later, off
+%% peak. This is the mesh grid-price signal shaping local behaviour with no
+%% central controller (see on_grid_price_changed_schedule_charging).
 step_phase(P, V, Ctx) when P =:= commissioned; P =:= cruising ->
     #{core := Core} = Ctx,
-    case service_needs(V, Core#core.params) of
+    case due_services(V, Core) of
         []  -> try_take_fare(V, Ctx);
         _   -> begin_return(V, Ctx)
     end;
@@ -414,13 +419,21 @@ charged_soh(Cycles0) ->
     {Cycle, max(60.0, 100.0 - Cycle * 0.1)}.
 
 %% Map a service kind to its command effect — one distinct fact per kind.
+%% Charging is not a single fact but a PROCESS: the sim emits a `charge_session'
+%% descriptor and the dispatch layer (simulate_fleet) expands it into the full
+%% request -> start -> progress* -> complete -> settle stream, priced by the
+%% live grid tariff. This is the density that answers "why so few events/s".
 service_effect(<<"charge">>, V, Core) ->
-    %% Emitted at charge START; apply_service bumps state at completion. Both use
-    %% charged_soh/1 so the event's SoH/cycle match the resulting state.
     {Cycle, Soh} = charged_soh(V#fveh.charge_cycles),
-    {charge_battery, #{vehicle_id => V#fveh.id, plate => V#fveh.plate, battery_pct => 100,
-                       battery_soh_pct => Soh, charge_cycle => Cycle,
-                       company_id => op_id(Core)}};
+    Before = num_or(V#fveh.battery_pct, 0),
+    Cap = maps:get(battery_capacity_kwh, Core#core.params, 60),
+    EnergyKwh = round1(erlang:max(0, 100 - Before) / 100 * Cap),
+    {charge_session, #{session_id      => charge_session_id(V#fveh.id, Cycle),
+                       vehicle_id      => V#fveh.id, plate => V#fveh.plate,
+                       company_id      => op_id(Core),
+                       battery_pct_before => Before, target_pct => 100,
+                       energy_kwh      => EnergyKwh,
+                       charge_cycle    => Cycle, battery_soh_pct => Soh}};
 service_effect(<<"clean">>, V, Core) ->
     {clean_vehicle, #{vehicle_id => V#fveh.id, plate => V#fveh.plate, company_id => op_id(Core)}};
 service_effect(<<"maintain">>, V, Core) ->
@@ -573,6 +586,32 @@ service_needs(V, P) ->
 need(true, K)  -> [K];
 need(false, _) -> [].
 
+%% Services worth a trip right now. Same as service_needs, minus a charge that
+%% the current grid price says to defer (dear grid + battery not critical). If
+%% cleaning/maintenance is also due, the trip still happens and charging is
+%% opportunistic on arrival; a charge-ONLY need is what gets deferred.
+due_services(V, Core) ->
+    Needs = service_needs(V, Core#core.params),
+    case defer_charge(V, Core) of
+        true  -> Needs -- [<<"charge">>];
+        false -> Needs
+    end.
+
+%% Defer a charge only when the grid is expensive AND the battery is above the
+%% critical floor. No live price => never defer (charge as the fleet always did).
+defer_charge(V, #core{params = P}) ->
+    Cents = maps:get(grid_cents, P, undefined),
+    is_number(Cents)
+        andalso Cents > maps:get(charge_defer_above_cents, P, 30)
+        andalso V#fveh.battery_pct > maps:get(charge_critical_pct, P, 22).
+
+%% @doc Inject the operative regional grid price (cents/kWh) into the core for
+%% this tick, so the pure charge/defer decision is deterministic. Set by the
+%% impure sim boundary from the charging PM's current tariff.
+-spec with_grid_cents(t(), number() | undefined) -> t().
+with_grid_cents(#core{params = P} = Core, Cents) ->
+    Core#core{params = P#{grid_cents => Cents}}.
+
 %%--------------------------------------------------------------------
 %% Accessors
 
@@ -640,3 +679,12 @@ x_of({X, _}) -> X.
 y_of({_, Y}) -> Y.
 
 round1(N) -> erlang:round(N * 10) / 10.
+
+num_or(N, _) when is_number(N) -> N;
+num_or(_, Default)             -> Default.
+
+%% Stable per-charge session id: `<vehicle_id>#<cycle>'. Deterministic from the
+%% vehicle + the charge cycle, so the same session is addressable at start and
+%% (were it split) completion without carrying extra vehicle state.
+charge_session_id(VehicleId, Cycle) ->
+    <<VehicleId/binary, "#", (integer_to_binary(Cycle))/binary>>.

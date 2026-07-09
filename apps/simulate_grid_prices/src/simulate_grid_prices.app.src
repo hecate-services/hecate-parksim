@@ -1,0 +1,15 @@
+{application, simulate_grid_prices, [
+    {description, "Simulated regional grid-price provider: publishes the grid_price integration fact on the mesh and feeds the local charging scheduler"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {simulate_grid_prices_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        simulate_clock,
+        guide_charging_lifecycle
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]}
+]}.

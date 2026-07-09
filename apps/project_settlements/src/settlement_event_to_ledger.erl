@@ -18,7 +18,8 @@ interested_in() ->
     [<<"ride_completed">>,     %% ride fare + tip     (revenue)
      <<"payment_captured">>,   %% parking fee         (revenue)
      <<"ride_cancelled">>,     %% cancellation fee    (revenue)
-     <<"battery_charged">>,    %% energy cost         (cost)
+     <<"energy_settled">>,     %% energy cost (charging process) (cost)
+     <<"battery_charged">>,    %% energy cost (legacy flat charge) (cost)
      <<"vehicle_towed">>,      %% tow cost            (cost)
      <<"refund_issued">>].     %% refund (fare reversal) (cost)
 

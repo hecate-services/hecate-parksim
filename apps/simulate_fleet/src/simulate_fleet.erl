@@ -20,6 +20,9 @@
 -include_lib("parksim_simulator/include/fleet.hrl").
 
 -export([start_link/0, snapshot/0, rides/0]).
+-ifdef(TEST).
+-export([charge_milestones/2]).
+-endif.
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
@@ -165,9 +168,68 @@ run_effect({release_vehicle, #{facility_id := FacId, bay_id := BayId,
 run_effect({release_vehicle, Payload}, _StoreId) ->
     %% Fallback: no facility_id/bay_id in payload (e.g. test/manual dispatch).
     _ = catch maybe_release_vehicle:dispatch(Payload);
+run_effect({charge_session, Payload}, _StoreId) ->
+    %% Expand the sim's charge descriptor into the full charging PROCESS,
+    %% priced by the live regional grid tariff (from the charging PM). One
+    %% dense session per charge: request -> start -> progress* -> complete ->
+    %% settle. The tariff drives the settled cost + off-peak flag, so the
+    %% mesh-propagated price signal is visible in the energy read model.
+    run_charge_session(Payload);
 run_effect({Cmd, Payload}, _StoreId) ->
     Mod = handler_for(Cmd),
     _ = catch Mod:dispatch(Payload).
+
+run_charge_session(P) ->
+    Session = maps:get(session_id, P),
+    Vehicle = maps:get(vehicle_id, P),
+    Company = maps:get(company_id, P, undefined),
+    Before  = maps:get(battery_pct_before, P, 0),
+    Energy  = maps:get(energy_kwh, P, 0),
+    Tariff  = grid_tariff_cents(),
+    _ = catch maybe_request_charge:dispatch(
+        #{session_id => Session, vehicle_id => Vehicle, company_id => Company,
+          plate => maps:get(plate, P, undefined),
+          battery_pct_before => Before, target_pct => maps:get(target_pct, P, 100),
+          tariff_cents_per_kwh => Tariff}),
+    _ = catch maybe_start_charging:dispatch(
+        #{session_id => Session, vehicle_id => Vehicle, company_id => Company,
+          charger_id => maps:get(charger_id, P, undefined),
+          battery_pct_before => Before, tariff_cents_per_kwh => Tariff}),
+    lists:foreach(
+        fun({Soc, Delta, Total}) ->
+            _ = catch maybe_progress_charging:dispatch(
+                #{session_id => Session, vehicle_id => Vehicle,
+                  soc_pct => Soc, energy_kwh_delta => Delta,
+                  energy_kwh_total => Total})
+        end, charge_milestones(Before, Energy)),
+    _ = catch maybe_complete_charging:dispatch(
+        #{session_id => Session, vehicle_id => Vehicle,
+          final_soc_pct => maps:get(target_pct, P, 100), energy_kwh => Energy,
+          charge_cycle => maps:get(charge_cycle, P, undefined),
+          battery_soh_pct => maps:get(battery_soh_pct, P, undefined)}),
+    _ = catch maybe_settle_energy:dispatch(
+        #{session_id => Session, vehicle_id => Vehicle, company_id => Company,
+          energy_kwh => Energy, tariff_cents_per_kwh => Tariff}),
+    ok.
+
+%% SoC checkpoints from the starting charge up to full, with the per-step and
+%% cumulative energy — the dense progress stream.
+charge_milestones(Before, _Energy) when Before >= 100 -> [];
+charge_milestones(Before, Energy) ->
+    Span  = max(1, 100 - Before),
+    Marks = lists:usort([M || M <- [40, 60, 80], M > Before] ++ [100]),
+    {Steps, _} = lists:mapfoldl(
+        fun(Soc, Prev) ->
+            Total = round(Energy * (Soc - Before) / Span * 10) / 10,
+            {{Soc, round((Total - Prev) * 10) / 10, Total}, Total}
+        end, 0.0, Marks),
+    Steps.
+
+grid_tariff_cents() ->
+    case catch on_grid_price_changed_schedule_charging:current_tariff() of
+        {ok, Cents, _OffPeak} when is_number(Cents) -> Cents;
+        _ -> 26   %% no live signal — shoulder-band fallback
+    end.
 
 handler_for(commission_vehicle)  -> maybe_commission_vehicle;
 handler_for(dispatch_vehicle)    -> maybe_dispatch_vehicle;

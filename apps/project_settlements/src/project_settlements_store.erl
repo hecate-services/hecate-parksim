@@ -100,7 +100,13 @@ do_apply_event(#{event_type := <<"payment_captured">>} = Ev, S) ->
     entry(S, g(paid_at, Ev), <<"parking_fee">>, credit,
           num(g(fee_cents, Ev)), g(session_id, Ev)),
     ok;
+do_apply_event(#{event_type := <<"energy_settled">>} = Ev, S) ->
+    %% Charging-process energy cost (kWh x grid tariff), booked at settle.
+    entry(S, g(settled_at, Ev), <<"energy_cost">>, debit,
+          num(g(cost_cents, Ev)), g(vehicle_id, Ev)),
+    ok;
 do_apply_event(#{event_type := <<"battery_charged">>} = Ev, S) ->
+    %% Legacy flat charge (kept for pre-charging-process events).
     entry(S, g(charged_at, Ev), <<"energy_cost">>, debit,
           num(g(charging_cents, Ev)), g(vehicle_id, Ev)),
     ok;

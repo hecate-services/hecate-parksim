@@ -28,9 +28,21 @@ init(#operator{} = Op, Params) ->
 
 poll(SimUnix, TickSecs, #sim{core = Core0, rng = Rng0, params = Params} = S) ->
     {Reqs, Rng1} = simulate_demand:requests(SimUnix, TickSecs, Params, Rng0),
+    %% Inject the operative regional grid price so the pure charge/defer
+    %% decision is deterministic within the tick. Read from the charging PM,
+    %% which holds this region's latest mesh-propagated price.
+    Core0b = simulate_fleet_core:with_grid_cents(Core0, operative_cents()),
     {Core1, _N, Effects} =
-        simulate_fleet_core:tick(Core0, SimUnix, TickSecs, Reqs, fun route/2),
+        simulate_fleet_core:tick(Core0b, SimUnix, TickSecs, Reqs, fun route/2),
     {Effects, S#sim{core = Core1, rng = Rng1}}.
+
+%% The current regional tariff, or `undefined' if no price signal has arrived
+%% yet (then charging is never deferred).
+operative_cents() ->
+    case catch on_grid_price_changed_schedule_charging:current_tariff() of
+        {ok, Cents, _OffPeak} -> Cents;
+        _                     -> undefined
+    end.
 
 snapshot(#sim{core = Core}) -> simulate_fleet_core:snapshot(Core).
 rides(#sim{core = Core})    -> simulate_fleet_core:rides(Core).

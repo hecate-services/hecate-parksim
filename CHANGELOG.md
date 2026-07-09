@@ -4,6 +4,46 @@ All notable changes to **hecate-parksim-simulator** are documented here.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-09
+
+Charging as a first-class **decentralized process** (Phase 2 of the
+decentralized-NFR demo). Answers "why so few events/s" with a genuinely dense
+process, and makes the mesh's federated coordination tangible: charging is
+scheduled by a grid-price signal that propagates across the mesh with **no
+central controller**.
+
+### Added
+
+- **`guide_charging_lifecycle`** CMD app — the charging-session aggregate
+  (stream `charging-<id>`, bit-flag phase machine) with the process vocabulary:
+  `charge_requested` → `charging_started` → `charging_progressed`* (per-SoC
+  milestones, the density) → `charging_completed` → `energy_settled`
+  (kWh × grid tariff → cost, off-peak flag).
+- **`on_grid_price_changed_schedule_charging`** process manager — subscribes to
+  the mesh `energy/<region>/grid_price` fact, holds this edge's operative
+  tariff, and answers charge-now-vs-defer for the local scheduler. Aggregate
+  fleet behaviour emerges from fact propagation, not a dispatcher.
+- **`simulate_grid_prices`** — regional grid-price provider: publishes the
+  `grid_price_changed` integration fact (leader-only, three-band day curve) and
+  feeds the local scheduler in-process.
+- **`project_energy`** read model — per-operator sessions, kWh, cost, and the
+  **off-peak share** (the payoff of price-aware scheduling);
+  `charging_event_to_energy` projection.
+
+### Changed
+
+- The fleet sim emits the charging **process** (a `charge_session` expanded into
+  the full event stream, priced by the live grid tariff) instead of a single
+  `battery_charged`; a dear grid **defers** non-critical charging. The operator
+  ledger now books energy cost from `energy_settled`. `battery_charged` handling
+  is kept for backward compatibility.
+
+### Fixed
+
+- `project_settlements_store_tests` reused DB filenames across eunit runs
+  (`unique_integer` resets per BEAM), reopening a stale DB and flaking; the
+  fixture now uses a run-unique path and deletes any stale file.
+
 ## [0.4.4] - 2026-07-03
 
 ### Changed

@@ -1,0 +1,18 @@
+{application, guide_charging_lifecycle, [
+    {description, "EV charging lifecycle (request -> start -> progress* -> complete -> settle), scheduled by a mesh grid-price signal"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {guide_charging_lifecycle_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        crypto,
+        reckon_db,
+        evoq,
+        reckon_evoq,
+        parksim_simulator
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]}
+]}.

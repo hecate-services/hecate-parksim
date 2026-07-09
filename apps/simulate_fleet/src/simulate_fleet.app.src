@@ -10,7 +10,8 @@
         parksim_simulator,
         simulate_clock,
         guide_vehicle_lifecycle,
-        guide_ride_lifecycle
+        guide_ride_lifecycle,
+        guide_charging_lifecycle
     ]},
     {env, []},
     {modules, []},

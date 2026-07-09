@@ -5,11 +5,19 @@
 -define(S, project_settlements_store).
 
 setup() ->
-    Db = "/tmp/hecate-parksim-test/settle-" ++ integer_to_list(erlang:unique_integer([positive])) ++ ".db",
+    %% `unique_integer` only resets per BEAM run, so the same filename recurs
+    %% across separate eunit invocations and the store would REOPEN a stale DB
+    %% (it opens, never truncates) — leaking a prior run's rows into this one.
+    %% Make the path unique across runs (nanosecond time) and delete any stale
+    %% file before opening, so every fixture starts on an empty ledger.
+    Db = "/tmp/hecate-parksim-test/settle-"
+         ++ integer_to_list(erlang:system_time(nanosecond))
+         ++ "-" ++ integer_to_list(erlang:unique_integer([positive])) ++ ".db",
+    _ = file:delete(Db),
     {ok, Pid} = ?S:start_link(#{db_path => Db, operator => <<"leuven">>}),
     Pid.
 
-cleanup(Pid) -> gen_server:stop(Pid).
+cleanup(Pid) -> catch gen_server:stop(Pid).
 
 settlement_test_() ->
     {setup, fun setup/0, fun cleanup/1,

@@ -75,9 +75,10 @@ service_cycle_test() ->
     ?assertEqual(returning, phase(C1)),
 
     {C2, _, E2} = simulate_fleet_core:tick(C1, 43260, 1000.0, [], fun route/2),
-    %% Low battery is the return reason, so the facility visit charges —
-    %% charge_battery now, not the generic service_vehicle.
-    ?assertEqual([dock_at_facility, charge_battery], cmds(E2)),
+    %% Low battery is the return reason, so the facility visit charges. Charging
+    %% is now a PROCESS: the sim emits a `charge_session' descriptor (expanded
+    %% into request/start/progress*/complete/settle by the dispatch layer).
+    ?assertEqual([dock_at_facility, charge_session], cmds(E2)),
     ?assertEqual(servicing, phase(C2)),
 
     %% advance past service_until (charge = 1800 sim s)

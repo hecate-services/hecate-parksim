@@ -1,0 +1,17 @@
+{application, project_energy, [
+    {description, "Energy read model: per-operator charging sessions, kWh, cost, off-peak share"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {project_energy_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        evoq,
+        reckon_evoq,
+        esqlite,
+        parksim_simulator
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]}
+]}.

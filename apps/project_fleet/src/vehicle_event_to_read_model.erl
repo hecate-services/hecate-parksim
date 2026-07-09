@@ -18,6 +18,8 @@ interested_in() ->
      <<"vehicle_returning">>,
      <<"vehicle_docked_at_facility">>,
      <<"battery_charged">>,
+     <<"charging_started">>,
+     <<"charging_completed">>,
      <<"vehicle_cleaned">>,
      <<"vehicle_maintained">>,
      <<"vehicle_released">>,

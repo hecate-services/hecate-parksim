@@ -138,6 +138,13 @@ apply_typed(<<"battery_charged">>, VId, Ev, Db) ->
     set_col(Db, VId, <<"service_kind">>, <<"charge">>),
     maybe_recharge(Db, VId, Ev),
     set_phase(Db, VId, ?VEH_SERVICING), ok;
+apply_typed(<<"charging_started">>, VId, _Ev, Db) ->
+    set_col(Db, VId, <<"service_kind">>, <<"charge">>),
+    set_phase(Db, VId, ?VEH_SERVICING), ok;
+apply_typed(<<"charging_completed">>, VId, Ev, Db) ->
+    set_col(Db, VId, <<"service_kind">>, <<"charge">>),
+    maybe_recharge(Db, VId, Ev#{battery_pct => maps:get(final_soc_pct, Ev, 100)}),
+    set_phase(Db, VId, ?VEH_SERVICING), ok;
 apply_typed(<<"vehicle_cleaned">>, VId, _Ev, Db) ->
     set_col(Db, VId, <<"service_kind">>, <<"clean">>),
     set_phase(Db, VId, ?VEH_SERVICING), ok;

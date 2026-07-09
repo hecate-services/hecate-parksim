@@ -1,7 +1,10 @@
 # PLAN — Demonstrating Decentralized vs Centralized Event-Store NFRs
 
 **Status:** Phase 1 shipped (2026-07-08) — scorecard (reckon-gateway 0.30.0) +
-[RUNBOOK_DECENTRALIZED_NFR_DEMO.md](RUNBOOK_DECENTRALIZED_NFR_DEMO.md). Phase 2 scoped, not started.
+[RUNBOOK_DECENTRALIZED_NFR_DEMO.md](RUNBOOK_DECENTRALIZED_NFR_DEMO.md).
+Phase 2 shipped (2026-07-09) — charging-as-a-decentralized-process
+(hecate-parksim 0.5.0): `guide_charging_lifecycle` + `project_energy` +
+`simulate_grid_prices` + `on_grid_price_changed_schedule_charging` PM.
 **Purpose:** Use parksim as a living proof that a *decentralized* event store
 (reckon_db in the Macula mesh) optimizes for a fundamentally different set of
 non-functional requirements than a *centralized* one (EventStoreDB, Kafka) — and
@@ -149,6 +152,20 @@ centralized" motivation, achievable on today's processes.
 
 Answers "why so few events/s" by modeling a denser, real process, and adds the
 one NFR Phase 1 can't show: **federated coordination with no central controller.**
+
+**Delivered (hecate-parksim 0.5.0, 2026-07-09).** All four pieces below shipped:
+`guide_charging_lifecycle` (aggregate + 5 desks: request/start/progress/complete/
+settle), `project_energy` (per-operator kWh/cost/off-peak share), the
+`grid_price_changed` fact via `simulate_grid_prices`, and the
+`on_grid_price_changed_schedule_charging` PM (charge-now-vs-defer from the mesh
+price). The sim emits the full charging stream (priced by the live tariff) and
+defers non-critical charging when the grid is dear. **Simplifications vs the
+sketch below:** tariff is stamped inline on `charging_started`/`energy_settled`
+rather than a separate `tariff_applied` event; `charger_reserved`/DCB reuse and
+`charging_interrupted` were dropped (the bay is already reserved by the visit);
+each region publishes its own price and reacts to its own (peer prices feed only
+a regional view), sidestepping the mesh's no-same-node-loopback. The dashboard
+Energy card + the write-up (§6.3) remain follow-ups.
 
 ### 5a. Charging as a first-class decentralized process
 Today charging is one flat `battery_charged` event in `guide_vehicle_lifecycle`.
