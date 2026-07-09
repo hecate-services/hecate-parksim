@@ -17,4 +17,7 @@ init([]) ->
                    start => {evoq_projection, start_link,
                              [charging_event_to_energy, #{},
                               #{store_id => hecate_parksim_service:store_id()}]}},
-    {ok, {SupFlags, [Store, Projection]}}.
+    %% Mesh publisher: emits this operator's energy summary fact on a cadence.
+    Emitter = #{id => emit_energy_summary,
+                start => {emit_energy_summary, start_link, []}},
+    {ok, {SupFlags, [Store, Projection, Emitter]}}.

@@ -9,7 +9,8 @@
         evoq,
         reckon_evoq,
         esqlite,
-        parksim_simulator
+        parksim_simulator,
+        guide_charging_lifecycle
     ]},
     {env, []},
     {modules, []},
