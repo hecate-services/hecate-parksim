@@ -164,8 +164,14 @@ sketch below:** tariff is stamped inline on `charging_started`/`energy_settled`
 rather than a separate `tariff_applied` event; `charger_reserved`/DCB reuse and
 `charging_interrupted` were dropped (the bay is already reserved by the visit);
 each region publishes its own price and reacts to its own (peer prices feed only
-a regional view), sidestepping the mesh's no-same-node-loopback. The dashboard
-Energy card + the write-up (§6.3) remain follow-ups.
+a regional view), sidestepping the mesh's no-same-node-loopback.
+
+**Energy card shipped (2026-07-09):** `project_energy` emits an
+`energy/<operator>/summary` integration fact (per-op kWh/cost/off-peak share +
+live grid price); the realm ClankerCab dashboard (macula.io/clankercab)
+subscribes and renders a federated **City energy** strip (kWh drawn · energy
+cost · off-peak % · live grid price, off-peak/peak coloured). The
+reckon-ecosystem write-up (§6.3) is the remaining follow-up.
 
 ### 5a. Charging as a first-class decentralized process
 Today charging is one flat `battery_charged` event in `guide_vehicle_lifecycle`.
