@@ -11,7 +11,7 @@
 set -uo pipefail
 
 ERL_BIN="$HOME/.asdf/installs/erlang/27.2/bin"
-ROOT="$HOME/work/codeberg.org/hecate-services/hecate-parksim"
+ROOT="$HOME/work/github.com/hecate-services/hecate-parksim"
 APP="$ROOT/apps/guide_vehicle_lifecycle"
 OUT=/tmp/vehc-check
 RESULT=/tmp/vehc-check-result.txt
