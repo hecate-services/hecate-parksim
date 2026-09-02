@@ -22,4 +22,4 @@ python3 scripts/scaffold-slices.py
 
 ## Issues
 
-https://codeberg.org/hecate-services/hecate-parksim-entry2exit/issues
+https://github.com/hecate-services/hecate-parksim-entry2exit/issues

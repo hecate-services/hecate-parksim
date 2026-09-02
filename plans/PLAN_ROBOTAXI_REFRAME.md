@@ -2,7 +2,7 @@
 
 **Status:** Built + live. Routing/map simplified — see amendment below.
 **Date:** 2026-05-30
-**Repo:** `codeberg.org/hecate-services/hecate-parksim`
+**Repo:** `github.com/hecate-services/hecate-parksim`
 
 > **Amendment — 2026-05-31: imaginary grid city (OSRM + Leaflet removed).**
 > The original "real Leuven streets via per-node OSRM sidecar" approach

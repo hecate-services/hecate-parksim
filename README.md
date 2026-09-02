@@ -2,7 +2,7 @@
 
 **Realm-bound traffic simulator** for the `hecate-parksim-*` family.
 Fires mesh RPCs against the parking services so
-[`reckon-lazy`](https://codeberg.org/reckon-db-org/reckon-lazy)
+[`reckon-lazy`](https://github.com/reckon-db-org/reckon-lazy)
 (`lazyreckon`) and any other event-store viewer have continuous,
 varied, believable event flow to display.
 
@@ -13,7 +13,7 @@ advertised by one of the three services.
 
 Runs on Hecate **infrastructure nodes** (BEAM cluster, dedicated
 relay boxes). Implements the `hecate_om_service` behaviour.
-Substrate: [`hecate-om`](https://codeberg.org/hecate-services/hecate-om).
+Substrate: [`hecate-om`](https://github.com/hecate-services/hecate-om).
 
 ## Layer position
 
@@ -78,8 +78,8 @@ systemd boots.
 
 ## Deps
 
-* [`hecate-om`](https://codeberg.org/hecate-services/hecate-om) — service substrate
-* [`macula`](https://codeberg.org/macula-io/macula) — mesh SDK (`macula:call/5`)
+* [`hecate-om`](https://github.com/hecate-services/hecate-om) — service substrate
+* [`macula`](https://github.com/macula-io/macula) — mesh SDK (`macula:call/5`)
 * `cowboy` — local HTTP admin endpoints
 
 ## Status
